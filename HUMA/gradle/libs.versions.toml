@@ -1,0 +1,6 @@
+[versions]
+runtime = "1.10.1"
+foundation = "1.10.1"
+[libraries]
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
