@@ -205,25 +205,6 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
 
 ---
 
-## 📂 Struktur Proyek (Ringkas)
-
-```
-com.huma.app
-│
-├── data
-│   ├── local
-│   └── repository
-│
-├── ui
-│   ├── screen
-│   ├── notification
-│   └── viewmodel
-│
-└── MainActivity.kt
-```
-
----
-
 ## 🚀 Rencana Pengembangan
 
 * Visual statistik yang lebih detail
