@@ -25,5 +25,6 @@ data class TaskEntity(
 
     val isDone: Boolean = false,
 
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null // 🔥 Tambahkan ini
 )

@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,6 +19,8 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -131,28 +134,106 @@ fun DashboardScreen(
 
 @Composable
 fun HeaderSection() {
+    // 1. Animasi Melambai untuk Emoji Tangan
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 20f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "handRotation"
+    )
+
+    // 2. Animasi Kedip Halus hanya untuk teks sapaan
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "blink"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(260.dp)
+            .clip(RoundedCornerShape(bottomStart = 45.dp, bottomEnd = 45.dp))
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF6C63FF), Color(0xFF4A47A3))
+                    // Warna Biru-Ungu yang lebih Deep & Bold
+                    listOf(Color(0xFF6C63FF), Color(0xFF3F3D56))
                 )
             )
     ) {
-        Column(Modifier.padding(24.dp)) {
-            Text("Hi 👋", color = Color.White)
+        // Efek Dekorasi Lingkaran (Tetap dipertahankan tapi sangat tipis)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color.White.copy(alpha = 0.05f),
+                radius = 300f,
+                center = Offset(size.width * 0.1f, size.height * 0.2f)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Teks Sapaan dengan Animasi Kedip
+                Text(
+                    "Hi, Human! ",
+                    color = Color.White.copy(alpha = alpha),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Light
+                )
+                // Emoji dengan Animasi Melambai
+                Text(
+                    "👋",
+                    modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+
             Text(
-                "Welcome to HUMA",
+                "Make Every\nDay Count",
                 color = Color.White,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black, // Tetap Bold sesuai konsep
+                lineHeight = 40.sp
             )
-            Text(
-                "Small commitments, real growth",
-                color = Color.White.copy(0.85f)
-            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // Glassmorphism Quote Minimalis
+            Surface(
+                color = Color.White.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.TipsAndUpdates,
+                        null,
+                        tint = Color(0xFFFFEB3B),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "Success is the sum of small efforts.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
         }
     }
 }

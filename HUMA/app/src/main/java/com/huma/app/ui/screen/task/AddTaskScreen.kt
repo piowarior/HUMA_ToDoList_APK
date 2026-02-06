@@ -342,46 +342,35 @@ fun AddTaskScreen(
             modifier = Modifier.fillMaxWidth(),
             onClick = {
                 if (title.isBlank()) return@Button
+                if (isUpcoming && selectedDate == null) return@Button
 
-                if (isUpcoming && selectedDate == null) {
-                    // 👉 BISA DIGANTI SNACKBAR
-                    return@Button
-                }
+                val startDate = if (isUpcoming) selectedDate!! else System.currentTimeMillis()
 
-                val startDate = if (isUpcoming) {
-                    selectedDate!!
-                } else {
-                    System.currentTimeMillis()
-                }
+                // 1. Ambil format HH:mm untuk notifikasi
+                val timeTextForNotification = if (useStartTime) {
+                    "%02d:%02d".format(startPickerState.hour, startPickerState.minute)
+                } else null
 
-                val timeText = when {
+                // 2. Format untuk database (bisa "08:00 - 09:00" atau cuma "08:00")
+                val timeTextForDb = when {
                     useStartTime && useEndTime -> {
                         "%02d:%02d - %02d:%02d".format(
-                            startPickerState.hour,
-                            startPickerState.minute,
-                            endPickerState.hour,
-                            endPickerState.minute
+                            startPickerState.hour, startPickerState.minute,
+                            endPickerState.hour, endPickerState.minute
                         )
                     }
-
-                    useStartTime -> {
-                        "%02d:%02d".format(
-                            startPickerState.hour,
-                            startPickerState.minute
-                        )
-                    }
-
+                    useStartTime -> timeTextForNotification
                     else -> null
                 }
 
-
+                // Simpan ke DB
                 viewModel.addTask(
                     TaskEntity(
                         title = title,
                         description = description,
                         startDate = startDate,
                         deadlineDate = null,
-                        dueDate = timeText,
+                        dueDate = timeTextForDb,
                         priority = priority,
                         mood = mood,
                         lifeArea = selectedArea.name,
@@ -389,12 +378,17 @@ fun AddTaskScreen(
                     )
                 )
 
-                scheduleTaskNotification(context, startDate, title)
+                // 🔥 PANGGIL NOTIFIKASI YANG SUDAH DIPERBAIKI
+                scheduleTaskNotification(
+                    context = context,
+                    dateMillis = startDate,
+                    timeText = timeTextForNotification, // Jam mulai saja
+                    title = title
+                )
 
                 navController.popBackStack()
             }
-        )
-        {
+        ) {
             Text("Simpan")
         }
     }

@@ -42,6 +42,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.media:media:1.6.0")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.7.3")
 

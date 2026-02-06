@@ -95,7 +95,7 @@ fun LifeAreaScreen(
                         taskCount = areaCount,
                         progress = areaProgress,
                         onClick = {
-                            // Navigasi ke detail jika sudah ada screen-nya
+                            navController.navigate("area_detail/${area.name}")
                         }
                     )
                 }

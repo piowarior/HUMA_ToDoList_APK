@@ -69,8 +69,9 @@ fun DoneTaskItem(
     var showRestoreDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val dateText = remember(task.startDate) {
-        SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(task.startDate))
+    val dateText = remember(task.completedAt) {
+        val timeToDisplay = task.completedAt ?: task.createdAt
+        SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(timeToDisplay))
     }
 
     Card(

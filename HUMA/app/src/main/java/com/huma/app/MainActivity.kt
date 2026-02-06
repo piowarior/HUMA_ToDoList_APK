@@ -32,7 +32,13 @@ import com.huma.app.ui.viewmodel.TaskViewModel
 import com.huma.app.ui.viewmodel.TaskViewModelFactory
 import com.huma.app.ui.screen.focus.FocusScreen
 import com.huma.app.ui.notification.createFocusNotificationChannel
+import com.huma.app.ui.screen.analytics.AnalyticsScreen
 import com.huma.app.ui.screen.lifearea.LifeAreaScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.huma.app.ui.screen.lifearea.AreaDetailScreen
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen // 🔥 TAMBAHKAN INI
+
 
 
 
@@ -47,7 +53,14 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // 🔥 Kuncinya di sini: Langsung hapus splash sistem tanpa animasi tambahan
+        splashScreen.setOnExitAnimationListener { splashProvider ->
+            splashProvider.remove()
+        }
 
         // 🔔 REQUEST NOTIFICATION PERMISSION (ANDROID 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -95,7 +108,7 @@ class MainActivity : ComponentActivity() {
             Surface(color = MaterialTheme.colorScheme.background) {
                 NavHost(
                     navController = navController,
-                    startDestination = "splash"
+                    startDestination = "splash",
                 ) {
                     // --- Auth & Splash ---
                     composable("splash") {
@@ -186,7 +199,25 @@ class MainActivity : ComponentActivity() {
                             taskViewModel = taskViewModel
                         )
                     }
-                    composable("analytics") { /* Buat Screen Stats jika perlu */ }
+                    composable("analytics") {
+                        // Pastikan AnalyticsScreen sudah di-import dari package:
+                        // com.huma.app.ui.screen.analytics.AnalyticsScreen
+                        AnalyticsScreen(
+                            navController = navController,
+                            viewModel = taskViewModel
+                        )
+                    }
+                    composable(
+                        route = "area_detail/{areaName}",
+                        arguments = listOf(navArgument("areaName") { type = NavType.StringType })
+                    ) { backStackEntry ->
+                        val areaName = backStackEntry.arguments?.getString("areaName") ?: ""
+                        AreaDetailScreen(
+                            areaName = areaName,
+                            navController = navController,
+                            taskViewModel = taskViewModel
+                        )
+                    }
                 }
             }
         }
