@@ -38,8 +38,11 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.huma.app.ui.screen.lifearea.AreaDetailScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen // 🔥 TAMBAHKAN INI
-
-
+import com.huma.app.ui.screen.note.NoteEditorScreen
+import com.huma.app.ui.screen.note.NoteScreen
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
+import com.huma.app.ui.screen.note.NoteData
 
 
 class MainActivity : ComponentActivity() {
@@ -104,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val navController: NavHostController = rememberNavController()
+            val globalNotes = remember { mutableStateListOf<NoteData>() }
 
             Surface(color = MaterialTheme.colorScheme.background) {
                 NavHost(
@@ -199,6 +203,36 @@ class MainActivity : ComponentActivity() {
                             taskViewModel = taskViewModel
                         )
                     }
+                    // --- Fitur Catatan (Notes) ---
+                    composable("notes_list") {
+                        NoteScreen(navController, globalNotes)
+                    }
+
+// 🔥 PERBAIKAN RUTE: Tambahkan arguments agar navigasi tidak crash
+                    composable(
+                        route = "note_editor?noteId={noteId}",
+                        arguments = listOf(navArgument("noteId") {
+                            type = NavType.StringType
+                            nullable = true
+                            defaultValue = null
+                        })
+                    ) { backStackEntry ->
+                        val noteId = backStackEntry.arguments?.getString("noteId")
+
+                        NoteEditorScreen(
+                            navController = navController,
+                            noteId = noteId, // Kirim ID ke editor
+                            globalNotes = globalNotes // Kirim list besar ke editor buat dicari datanya
+                        ) { newNote ->
+                            val existingIndex = globalNotes.indexOfFirst { it.id == newNote.id }
+                            if (existingIndex != -1) {
+                                globalNotes[existingIndex] = newNote
+                            } else {
+                                globalNotes.add(newNote)
+                            }
+                        }
+                    }
+
                     composable("analytics") {
                         // Pastikan AnalyticsScreen sudah di-import dari package:
                         // com.huma.app.ui.screen.analytics.AnalyticsScreen

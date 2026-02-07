@@ -29,6 +29,9 @@ import com.huma.app.ui.viewmodel.TaskViewModel
 import com.huma.app.ui.components.task.TaskSection
 import com.huma.app.ui.components.task.UpcomingPreviewSection
 import com.huma.app.ui.screen.task.DoneTasksSection
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -132,104 +135,102 @@ fun DashboardScreen(
 
 // ================= HEADER =================
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun HeaderSection() {
-    // 1. Animasi Melambai untuk Emoji Tangan
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = -10f,
-        targetValue = 20f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "handRotation"
-    )
-
-    // 2. Animasi Kedip Halus hanya untuk teks sapaan
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ), label = "blink"
-    )
+    // Mengambil tanggal hari ini
+    val today = LocalDate.now()
+    val dayName = today.format(DateTimeFormatter.ofPattern("EEEE", Locale("id", "ID"))) // Nama Hari (e.g. Senin)
+    val fullDate = today.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID"))) // Format Lengkap
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
-            .clip(RoundedCornerShape(bottomStart = 45.dp, bottomEnd = 45.dp))
+            .height(240.dp) // Sedikit lebih pendek agar compact
+            .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
             .background(
                 Brush.verticalGradient(
-                    // Warna Biru-Ungu yang lebih Deep & Bold
-                    listOf(Color(0xFF6C63FF), Color(0xFF3F3D56))
+                    listOf(
+                        Color(0xFF87CEEB), // Sky Blue Terang
+                        Color(0x8CE4FF)  // Sky Blue agak Deep (Cadet Blue)
+                    )
                 )
             )
     ) {
-        // Efek Dekorasi Lingkaran (Tetap dipertahankan tapi sangat tipis)
+        // Dekorasi simpel tanpa animasi (Static)
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
-                color = Color.White.copy(alpha = 0.05f),
-                radius = 300f,
-                center = Offset(size.width * 0.1f, size.height * 0.2f)
+                color = Color.White.copy(alpha = 0.15f),
+                radius = 250f,
+                center = Offset(size.width * 0.9f, size.height * 0.1f)
             )
         }
 
         Column(
             modifier = Modifier
-                .padding(horizontal = 28.dp)
+                .padding(horizontal = 24.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.Center
         ) {
+            // Tampilan Hari dan Tanggal
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Teks Sapaan dengan Animasi Kedip
-                Text(
-                    "Hi, Human! ",
-                    color = Color.White.copy(alpha = alpha),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Light
+                Icon(
+                    Icons.Default.CalendarToday,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(16.dp)
                 )
-                // Emoji dengan Animasi Melambai
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    "👋",
-                    modifier = Modifier.graphicsLayer { rotationZ = rotation },
-                    style = MaterialTheme.typography.titleLarge
+                    text = "$dayName, $fullDate",
+                    color = Color.White.copy(alpha = 0.9f),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium
                 )
             }
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                "Hi, Human! 👋",
+                color = Color.White,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Light
+            )
 
             Text(
                 "Make Every\nDay Count",
                 color = Color.White,
                 style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Black, // Tetap Bold sesuai konsep
+                fontWeight = FontWeight.Black,
                 lineHeight = 40.sp
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Glassmorphism Quote Minimalis
+            // Quote Box: Lebih kotak & Warna Abu-abu Gelap
             Surface(
-                color = Color.White.copy(alpha = 0.12f),
-                shape = RoundedCornerShape(20.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                color = Color(0xFF37474F).copy(alpha = 0.08f), // Abu-abu tipis untuk box
+                shape = RoundedCornerShape(8.dp), // Dibuat lebih kotak (dari 16 ke 8)
+                border = BorderStroke(1.dp, Color(0xFF37474F).copy(alpha = 0.2f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.TipsAndUpdates,
+                        Icons.Default.FormatQuote,
                         null,
-                        tint = Color(0xFFFFEB3B),
+                        tint = Color(0xFF64748B), // Ikon Abu-abu Tua
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         "Success is the sum of small efforts.",
-                        color = Color.White,
+                        color = Color(0xFF64748B), // Teks Abu-abu Tua (Sangat Jelas)
                         style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
@@ -393,6 +394,9 @@ fun QuickMenu(navController: NavController) {
         }
         MenuIconAnimated("Streak", Icons.Default.LocalFireDepartment) {
             navController.navigate("streak")
+        }
+        MenuIconAnimated("Notes", Icons.Default.Description) {
+            navController.navigate("notes_list")
         }
         MenuIconAnimated("Life", Icons.Default.Dashboard) {
             navController.navigate("life_area")
