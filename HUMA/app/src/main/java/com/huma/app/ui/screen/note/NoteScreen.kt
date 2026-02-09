@@ -24,14 +24,23 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.filled.Close
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoteScreen(navController: NavController, globalNotes: MutableList<NoteData>) {
+fun NoteScreen(navController: NavController, globalNotes: List<NoteData>, onDeleteNote: (NoteData) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
 
     // Filter logika
-    val filteredNotes = remember(searchQuery, globalNotes.size) {
+    val filteredNotes = remember(searchQuery, globalNotes) {
         if (searchQuery.isEmpty()) globalNotes
         else globalNotes.filter {
             it.title.contains(searchQuery, ignoreCase = true) ||
@@ -82,16 +91,24 @@ fun NoteScreen(navController: NavController, globalNotes: MutableList<NoteData>)
             if (globalNotes.isEmpty()) {
                 EmptyNotesPlaceholder()
             } else {
-                LazyColumn(
+                LazyVerticalStaggeredGrid(
+                    columns = StaggeredGridCells.Fixed(2),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp) // Jarak antar kotak
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalItemSpacing = 12.dp
                 ) {
-                    items(filteredNotes) { note ->
-                        NoteItemCard(note) {
-                            // Navigasi edit (sesuaikan rute di MainActivity)
-                            navController.navigate("note_editor?noteId=${note.id}")
-                        }
+                    items(filteredNotes, key = { it.id }) { note ->
+                        // DI SINI TEMPATNYA:
+                        NoteItemCard(
+                            note = note,
+                            onClick = {
+                                navController.navigate("note_editor?noteId=${note.id}")
+                            },
+                            onDelete = {
+                                onDeleteNote(note) // Memanggil fungsi hapus
+                            }
+                        )
                     }
                 }
             }
@@ -99,65 +116,104 @@ fun NoteScreen(navController: NavController, globalNotes: MutableList<NoteData>)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NoteItemCard(note: NoteData, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) { // Padding dalam lebih besar
-            Text(
-                text = note.title.ifEmpty { "Untitled" },
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 20.sp, // Judul lebih besar
-                color = Color(0xFF2C3E50),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+fun NoteItemCard(note: NoteData, onDelete: () -> Unit, onClick: () -> Unit) {
+    // State untuk kontrol menu hapus
+    var showMenu by remember { mutableStateOf(false) }
+    // Untuk efek getar
+    val haptic = LocalHapticFeedback.current
 
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = note.previewContent,
-                fontSize = 15.sp,
-                color = Color.DarkGray,
-                lineHeight = 22.sp,
-                maxLines = 6, // Menampilkan lebih banyak baris teks
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                // GANTI: Gunakan combinedClickable untuk deteksi long click
+                .combinedClickable(
+                    onClick = { onClick() },
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showMenu = true
+                    }
+                ),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // JUDUL UTAMA
                 Text(
-                    text = note.date,
-                    fontSize = 12.sp,
-                    color = Color.LightGray,
-                    fontWeight = FontWeight.Medium
+                    text = note.title.ifEmpty { "Tanpa Judul" },
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 17.sp,
+                    color = Color(0xFF2C3E50),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
-                // Indikator kecil agar terlihat estetik
-                Surface(
-                    color = Color(0xFF6C63FF).copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        "Note",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontSize = 10.sp,
-                        color = Color(0xFF6C63FF),
-                        fontWeight = FontWeight.Bold
-                    )
+                Spacer(Modifier.height(8.dp))
+
+                // PREVIEW ISI (Heading, Text, Bullet, Checkbox)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    note.previewBlocks.forEach { block ->
+                        when (block) {
+                            is NoteBlock.Heading -> {
+                                Text(
+                                    text = block.content,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color.Black,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            is NoteBlock.Text -> {
+                                Text(
+                                    text = block.content,
+                                    fontSize = 12.sp,
+                                    color = Color.Gray,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            is NoteBlock.BulletList -> {
+                                if (block.items.isNotEmpty()) {
+                                    Text(text = "• ${block.items.first()}", fontSize = 12.sp, color = Color.Gray, maxLines = 1)
+                                }
+                            }
+                            is NoteBlock.CheckboxGroup -> {
+                                if (block.items.isNotEmpty()) {
+                                    Text(text = "☐ ${block.items.first().text}", fontSize = 12.sp, color = Color.Gray, maxLines = 1)
+                                }
+                            }
+                        }
+                    }
                 }
+
+                Spacer(Modifier.height(12.dp))
+
+                // TANGGAL
+                Text(text = note.date, fontSize = 10.sp, color = Color.LightGray)
             }
+        }
+
+        // MENU POPUP (Muncul saat ditekan lama)
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(Color.White)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Hapus Catatan", color = Color.Red) },
+                // Ganti Icons.Default.Delete menjadi Icons.Default.DeleteOutline atau Icons.Default.Clear
+                // Ganti baris leadingIcon di dalam DropdownMenuItem:
+                leadingIcon = { Icon(Icons.Default.Close, contentDescription = null, tint = Color.Red) },
+                onClick = {
+                    showMenu = false
+                    onDelete()
+                }
+            )
         }
     }
 }

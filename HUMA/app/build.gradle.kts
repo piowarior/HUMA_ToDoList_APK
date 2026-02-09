@@ -44,6 +44,7 @@ dependencies {
     implementation("androidx.media:media:1.6.0")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("com.google.code.gson:gson:2.10.1")
 // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.7.3")
 

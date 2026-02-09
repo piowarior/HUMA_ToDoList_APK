@@ -43,6 +43,14 @@ import com.huma.app.ui.screen.note.NoteScreen
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
 import com.huma.app.ui.screen.note.NoteData
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.huma.app.viewmodel.NoteViewModel
+import com.huma.app.viewmodel.NoteViewModelFactory
+import com.huma.app.viewmodel.StreakViewModel
+import com.huma.app.viewmodel.StreakViewModelFactory
+import com.huma.app.ui.screen.streak.StreakScreen
+
 
 
 class MainActivity : ComponentActivity() {
@@ -105,9 +113,20 @@ class MainActivity : ComponentActivity() {
         val factory = TaskViewModelFactory(repository)
         val taskViewModel = ViewModelProvider(this, factory)[TaskViewModel::class.java]
 
+        // Setup Note ViewModel (Tambahkan ini di bawah taskViewModel)
+        val noteFactory = NoteViewModelFactory(database.noteDao())
+        val noteViewModel = ViewModelProvider(this, noteFactory)[NoteViewModel::class.java]
+        // Inisialisasi Streak ViewModel
+        val streakFactory = StreakViewModelFactory(database.streakDao())
+        val streakViewModel = ViewModelProvider(this, streakFactory)[StreakViewModel::class.java]
+
         setContent {
             val navController: NavHostController = rememberNavController()
-            val globalNotes = remember { mutableStateListOf<NoteData>() }
+            val noteEntities by noteViewModel.allNotes.collectAsState(initial = emptyList())
+            val globalNotes = noteEntities.map { entity ->
+                NoteData(entity.id, entity.title, entity.blocks, entity.date)
+            }
+
 
             Surface(color = MaterialTheme.colorScheme.background) {
                 NavHost(
@@ -196,19 +215,31 @@ class MainActivity : ComponentActivity() {
                             taskViewModel = taskViewModel
                         )
                     }
-                    composable("streak") { /* Buat Screen Streak jika perlu */ }
+
+                    composable("streak") {
+                        // Pastikan StreakScreen sudah di-import:
+                        // import com.huma.app.ui.screen.streak.StreakScreen
+                        StreakScreen(viewModel = streakViewModel)
+                    }
+
                     composable("life_area") {
                         LifeAreaScreen(
                             navController = navController,
                             taskViewModel = taskViewModel
                         )
                     }
-                    // --- Fitur Catatan (Notes) ---
+                    // SESUDAHNYA (Fix)
                     composable("notes_list") {
-                        NoteScreen(navController, globalNotes)
+                        NoteScreen(
+                            navController = navController,
+                            globalNotes = globalNotes,
+                            onDeleteNote = { noteToDelete ->
+                                // Kita panggil fungsi delete dari noteViewModel
+                                noteViewModel.deleteNote(noteToDelete)
+                            }
+                        )
                     }
 
-// 🔥 PERBAIKAN RUTE: Tambahkan arguments agar navigasi tidak crash
                     composable(
                         route = "note_editor?noteId={noteId}",
                         arguments = listOf(navArgument("noteId") {
@@ -224,12 +255,7 @@ class MainActivity : ComponentActivity() {
                             noteId = noteId, // Kirim ID ke editor
                             globalNotes = globalNotes // Kirim list besar ke editor buat dicari datanya
                         ) { newNote ->
-                            val existingIndex = globalNotes.indexOfFirst { it.id == newNote.id }
-                            if (existingIndex != -1) {
-                                globalNotes[existingIndex] = newNote
-                            } else {
-                                globalNotes.add(newNote)
-                            }
+                            noteViewModel.saveNote(newNote)
                         }
                     }
 

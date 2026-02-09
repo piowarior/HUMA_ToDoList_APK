@@ -383,11 +383,16 @@ fun QuickMenu(navController: NavController) {
         fontWeight = FontWeight.Bold
     )
 
+    val scrollState = rememberScrollState() // 🔥 State untuk nginget posisi geser
+
     Spacer(Modifier.height(12.dp))
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(scrollState) // 🔥 Ini yang bikin bisa digeser ke kanan
+            .padding(horizontal = 16.dp), // Kasih padding dikit biar nggak nempel tembok pas di-scroll
+        horizontalArrangement = Arrangement.spacedBy(24.dp) // 🔥 Atur jarak antar menu biar lega
     ) {
         MenuIconAnimated("Focus", Icons.Default.CenterFocusStrong) {
             navController.navigate("focus")
