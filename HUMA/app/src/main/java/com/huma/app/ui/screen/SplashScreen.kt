@@ -60,7 +60,7 @@ fun SplashScreen(navController: NavController) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.drawable.logo_huma),
                 contentDescription = "HUMA Logo",
                 modifier = Modifier
                     .size(140.dp)
