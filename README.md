@@ -178,20 +178,52 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
 
 ## 🖼️ Preview Aplikasi
 
-> 📌 Tambahkan screenshot / video di folder `docs/`
+### 📱 Splash
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/6b13557a-beef-4703-b001-2d7e91ea58f9" width="250">
+</p>
 
 ### 📱 Dashboard
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8b17952c-012c-45e6-a73a-cefdcb617b08" width="250">
+</p>
 
-![Dashboard Preview](docs/images/dashboard.png)
+### ✅ Task Management (Add & Preview)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/60b7296b-3447-48a9-84bc-d1bb02ccb135" width="250" alt="Add Task">
+  <img src="https://github.com/user-attachments/assets/6e85bca3-e8a3-421d-8afd-e23fece60690" width="250" alt="Preview Task">
+  <img src="https://github.com/user-attachments/assets/d8d07be1-3c59-4053-a73a-ec84c649be14" width="250" alt="Task on Dashboard">
+</p>
 
 ### 🎯 Focus Mode
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/ec5950c7-8c29-42ad-8882-506246033c8c" width="250">
+</p>
 
-![Focus Mode Preview](docs/images/focus_mode.png)
+### 🔥 Streak
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/06846a2a-b691-4d64-8328-00f4847b17c7" width="250">
+  <img src="https://github.com/user-attachments/assets/a95d5a83-c738-4d37-a5e5-5c751346f8d7" width="250">
+</p>
+
+### ⚖️ Life Balance
+<p align="center">
+
+  <img src="https://github.com/user-attachments/assets/fe0c0a14-9280-46ae-8837-1bd5dcf659c6" width="250">
+</p>
+
+### 📊 Stats
+<p align="center">
+
+  <img src="https://github.com/user-attachments/assets/620736eb-a6f5-4a23-ba51-b1da20b2a741" width="250">
+  <img src="https://github.com/user-attachments/assets/ff8cb0a0-9fe6-40a1-92ce-b3affa04c31e" width="250">
+</p>
 
 ### 📝 Quick Notes
-
-![Notes Preview](docs/images/quick_notes.png)
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a5d1c79b-e2c5-4989-b487-933eb3dfeb8a" width="250">
+  <img src="https://github.com/user-attachments/assets/4fc9f534-2673-4e83-9436-5648c57716fe" width="250">
+</p>
 ---
 
 ## 🛠️ Teknologi yang Digunakan
