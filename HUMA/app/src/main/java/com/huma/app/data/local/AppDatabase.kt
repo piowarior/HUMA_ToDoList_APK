@@ -20,7 +20,8 @@ import com.huma.app.data.local.streak.StreakEntity  // 🔥 Import Entity Baru
 @TypeConverters(
     TaskConverters::class,
     DateTimeConverter::class,
-    NoteConverters::class
+    NoteConverters::class,
+    ListIntConverter::class
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao

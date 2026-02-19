@@ -70,4 +70,8 @@ interface StreakDao {
      */
     @Query("UPDATE streak_table SET lifeLineCount = 1 WHERE id = 0")
     suspend fun restoreLifeLine()
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertDefault(streak: StreakEntity)
+
 }

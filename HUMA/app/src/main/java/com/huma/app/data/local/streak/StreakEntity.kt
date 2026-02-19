@@ -23,6 +23,10 @@ data class StreakEntity(
     val lifeLineCount: Int = 1,          // 1 = Tersedia, 0 = Sudah dipakai
     val lifeLineRecoveryProgress: Int = 0, // Sudah berapa hari sejak nyawa dipakai (target 7 hari)
     val hasShield: Boolean = false,      // Aktif otomatis di hari ke-25
+    val streakStartMillis: Long = 0L, // hari pertama streak dimulai
+    val protectedDays: List<Int> = emptyList(),
+
+
 
     // --- STATUS VISUAL EVOLUSI (Berdasarkan Konsep Hari) ---
     /* Level Table (Internal Logic):

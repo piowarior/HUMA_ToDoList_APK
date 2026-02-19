@@ -12,6 +12,12 @@ import java.util.*
 
 class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            dao.insertDefault(StreakEntity(id = 0))
+        }
+    }
+
     // --- STATE UTAMA ---
     private val _streakData = dao.getStreak().stateIn(
         scope = viewModelScope,
@@ -37,58 +43,63 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
     fun checkStreakLogic() {
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val currentData = dao.getStreak().firstOrNull()
+            val data = dao.getStreak().firstOrNull() ?: return@launch
 
-            if (currentData == null) {
-                val initial = StreakEntity(
-                    id = 0,
-                    currentStreak = 0,
-                    isIgnitedToday = false,
-                    lastBurnedWord = "Siap?",
-                    lastLoginMillis = now
-                )
-                dao.upsertStreak(initial)
-            } else {
-                val lastLogin = Calendar.getInstance().apply { timeInMillis = currentData.lastLoginMillis }
-                val today = Calendar.getInstance()
+            // --- FIX: FIRST RUN GUARD ---
+            if (data.lastLoginMillis == 0L && data.currentStreak == 0) {
+                return@launch
+            }
 
-                // Cek apakah hari sudah berganti (Beda tanggal, bulan, atau tahun)
-                val isDifferentDay = lastLogin.get(Calendar.DAY_OF_YEAR) != today.get(Calendar.DAY_OF_YEAR) ||
-                        lastLogin.get(Calendar.YEAR) != today.get(Calendar.YEAR)
+            val todayStart = getTodayStartMillis()
+            val lastLoginDay = data.lastLoginMillis
 
-                if (isDifferentDay) {
-                    // Jika hari sudah ganti, cek apakah kemarin api nyala
-                    if (currentData.isIgnitedToday) {
-                        // Aman, tapi status nyala hari ini di-reset jadi false (siap dinyalain lagi)
-                        dao.upsertStreak(currentData.copy(
-                            isIgnitedToday = false,
-                            lastLoginMillis = now
-                        ))
-                    } else {
-                        // Kemarin gak nyalain api sama sekali? Terancam putus.
-                        handleStreakThreat(currentData)
-                    }
+            val diffDays = ((todayStart - lastLoginDay) / DAY).toInt()
+
+            when {
+                diffDays == 0 -> return@launch
+
+                diffDays == 1 -> {
+                    dao.upsertStreak(data.copy(isIgnitedToday = false))
                 }
+
+                diffDays > 1 -> handleStreakThreat(data)
             }
         }
     }
 
-    /**
-     * LOGIKA PENYELAMATAN (Shield & Life Line)
-     */
+
+
+
+    // Helper untuk hitung selisih hari
+    private fun getDaysDiff(last: Calendar, now: Calendar): Int {
+        val date1 = last.clone() as Calendar
+        val date2 = now.clone() as Calendar
+        date1.set(Calendar.HOUR_OF_DAY, 0); date1.set(Calendar.MINUTE, 0); date1.set(Calendar.SECOND, 0); date1.set(Calendar.MILLISECOND, 0)
+        date2.set(Calendar.HOUR_OF_DAY, 0); date2.set(Calendar.MINUTE, 0); date2.set(Calendar.SECOND, 0); date2.set(Calendar.MILLISECOND, 0)
+        return ((date2.timeInMillis - date1.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+    }
+
     private suspend fun handleStreakThreat(data: StreakEntity) {
-        if (data.hasShield) {
-            // Shield menyelamatkan tanpa mengurangi nyawa
-            dao.upsertStreak(data.copy(hasShield = false, lastLoginMillis = System.currentTimeMillis()))
-        } else if (data.lifeLineCount > 0) {
-            // Status Terancam: UI nanti akan menampilkan ritual "Gunakan Nyawa"
-            // Kita tidak reset otomatis, biarkan user masuk ke ritual penyelamatan
-        } else {
-            // Game Over: Hangus total
-            dao.resetStreak()
+        when {
+            data.hasShield -> {
+                dao.upsertStreak(
+                    data.copy(
+                        hasShield = false,
+                        isIgnitedToday = false
+                    )
+                )
+            }
+
+            data.lifeLineCount > 0 -> {
+                isAwakeningActive = true
+            }
+
+            else -> {
+                dao.resetStreak()
+            }
         }
     }
+
 
     /**
      * RITUAL 1: FRICTION (Gesek Batu Api)
@@ -109,31 +120,19 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
      */
     fun igniteTheFlame(word: String) {
         viewModelScope.launch {
-            val data = _streakData.value ?: StreakEntity()
-            val newStreak = data.currentStreak + 1
+            val data = _streakData.value ?: return@launch
+            val todayStart = getTodayStartMillis()
 
-            // Cek pemulihan nyawa (7 hari konsistensi)
-            var newLifeLineCount = data.lifeLineCount
-            var newRecoveryProgress = data.lifeLineRecoveryProgress
-
-            if (data.lifeLineCount == 0) {
-                newRecoveryProgress += 1
-                if (newRecoveryProgress >= 7) {
-                    newLifeLineCount = 1
-                    newRecoveryProgress = 0
-                }
-            }
+            val isFirst = data.currentStreak == 0
 
             val updatedData = data.copy(
-                currentStreak = newStreak,
+                currentStreak = data.currentStreak + 1,
                 isIgnitedToday = true,
                 lastBurnedWord = word,
-                lastLoginMillis = System.currentTimeMillis(),
-                highestStreak = if (newStreak > data.highestStreak) newStreak else data.highestStreak,
-                hasShield = newStreak >= 25,
-                lifeLineCount = newLifeLineCount,
-                lifeLineRecoveryProgress = newRecoveryProgress,
-                isFirstTimeUser = false
+                lastLoginMillis = todayStart,
+                streakStartMillis = if (isFirst) todayStart else data.streakStartMillis,
+                highestStreak = maxOf(data.highestStreak, data.currentStreak + 1),
+                hasShield = data.currentStreak + 1 >= 25
             )
 
             dao.upsertStreak(updatedData)
@@ -142,20 +141,38 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         }
     }
 
+
     /**
      * RITUAL 4: GUNAKAN NYAWA (Penyelamatan Manual)
      */
     fun useLifeLineRitual() {
         viewModelScope.launch {
             val data = _streakData.value ?: return@launch
-            dao.useLifeLine()
-            // Setelah nyawa dipakai, set login ke 'sekarang' agar tidak hangus
-            dao.upsertStreak(data.copy(
-                lastLoginMillis = System.currentTimeMillis(),
-                isIgnitedToday = false
-            ))
+
+            val now = System.currentTimeMillis()
+
+            // Hitung hari bolong
+            val diffDays = ((now - data.lastLoginMillis) / DAY).toInt()
+
+            // Hari yang di-protect = hari sebelumnya
+            val protectedDay = data.currentStreak + 1
+
+            dao.upsertStreak(
+                data.copy(
+                    currentStreak = data.currentStreak + diffDays, // 🔥 TAMBAH STREAK SESUAI HARI YANG TERLEWAT
+                    protectedDays = data.protectedDays + protectedDay, // 🔵 SIMPAN HARI YANG DIPROTEKSI
+                    lastLoginMillis = now,
+                    isIgnitedToday = false,
+                    lifeLineCount = 0,
+                    lifeLineRecoveryProgress = 0
+                )
+            )
         }
     }
+
+
+
+
 
     /**
      * FUNGSI DINAMIS UNTUK UI (Evolusi Api Harian)
@@ -181,6 +198,8 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         }
     }
 
+
+
     // --- DEBUG FUNCTIONS (Time Machine) ---
     fun debugAddDays(amount: Int) { debugDaysOffset += amount }
     fun debugSetDays(target: Int) {
@@ -199,4 +218,15 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         }
         // Implementasi sederhana: MediaPlayer.create(context, soundRes).start()
     }
+}
+
+private const val DAY = 1000L * 60 * 60 * 24
+
+private fun getTodayStartMillis(): Long {
+    return Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
 }

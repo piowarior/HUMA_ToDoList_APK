@@ -50,12 +50,29 @@ val DeepGold = Color(0xFFFFD600)
 val PlasmaBlue = Color(0xFF00E5FF)
 val VoidBlack = Color(0xFF0A0A0A)
 val FireRed = Color(0xFFD50000)
+private const val DAY = 24 * 60 * 60 * 1000L
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun StreakScreen(viewModel: StreakViewModel) {
+    val isDeadMode = viewModel.isAwakeningActive
     val streakData by viewModel.streakData.collectAsState(initial = null)
+
+    if (streakData == null) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = FlameOrange)
+        }
+        return   // ⬅️ WAJIB ADA
+    }
+
+    val data = streakData!!   // AMAN
     val effectiveStreak = viewModel.getEffectiveStreak()
-    val fireState = calculateFireVisualState(effectiveStreak)
+    val fireState = calculateFireVisualState(
+        if (isDeadMode) 0 else effectiveStreak
+    )
+
     val dynamicBackground = getDynamicBackground(effectiveStreak)
     val scope = rememberCoroutineScope()
     val flashAlpha = remember { Animatable(0f) }
@@ -79,7 +96,6 @@ fun StreakScreen(viewModel: StreakViewModel) {
             AnimatedContent(
                 targetState = currentSubTab,
                 transitionSpec = {
-                    // Gabungkan Enter (masuk) dan Exit (keluar) dengan benar
                     (fadeIn(animationSpec = tween(400)) + scaleIn(initialScale = 0.92f))
                         .togetherWith(fadeOut(animationSpec = tween(400)))
                 },
@@ -96,33 +112,47 @@ fun StreakScreen(viewModel: StreakViewModel) {
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            if (!data.isIgnitedToday) {
+                            val isDeadMode = viewModel.isAwakeningActive
+
+                            if (isDeadMode) {
+
+                                DeadFlameScreen()
+
+                            } else if (!data.isIgnitedToday) {
+
                                 if (viewModel.showInquiry) {
-                                    InquirySection(onBurn = { word ->
-                                        viewModel.igniteTheFlame(word)
-                                        scope.launch {
-                                            flashAlpha.animateTo(0.8f, tween(50))
-                                            flashAlpha.animateTo(0f, tween(600))
+                                    InquirySection(
+                                        onBurn = { word ->
+                                            viewModel.igniteTheFlame(word)
+                                            scope.launch {
+                                                flashAlpha.animateTo(0.8f, tween(50))
+                                                flashAlpha.animateTo(0f, tween(600))
+                                            }
                                         }
-                                    })
+                                    )
                                 } else {
                                     FrictionSection(
                                         progress = viewModel.currentFriction,
                                         onSwipe = { delta -> viewModel.onFrictionSwipe(delta) }
                                     )
                                 }
+
                             } else {
-                                // TAMPILAN API BARU: LEBIH LIAR & ANGKA DI BAWAH
+
                                 FireDisplaySection(
                                     streak = effectiveStreak,
                                     word = data.lastBurnedWord,
                                     fireState = fireState,
                                     flashAlpha = flashAlpha.value
                                 )
+
                             }
 
                             Spacer(modifier = Modifier.height(40.dp))
-                            HorizontalChainCalendar(effectiveStreak)
+                            HorizontalChainCalendar(
+                                streak = effectiveStreak,
+                                protectedDays = data.protectedDays
+                            )
                             Spacer(modifier = Modifier.height(120.dp))
                         }
                     }
@@ -142,15 +172,46 @@ fun StreakScreen(viewModel: StreakViewModel) {
                 )
             }
 
-            // Status (Health/Shield) & Debug
+            // Status (Health/Shield)
             Box(modifier = Modifier.fillMaxSize().padding(30.dp), contentAlignment = Alignment.BottomStart) {
                 StatusIndicators(data = data)
             }
 
+            // --- DIALOG PENYELAMATAN (LIFE LINE) ---
+            if (viewModel.isAwakeningActive) {
+                AlertDialog(
+                    onDismissRequest = { }, // Mengunci agar user harus memilih
+                    containerColor = Color(0xFF1A1A1A),
+                    title = {
+                        Text("API TELAH PADAM!", color = FireRed, fontWeight = FontWeight.Bold)
+                    },
+                    text = {
+                        Text(
+                            "Namun kamu memiliki ${data.lifeLineCount} Keselamatan. Gunakan untuk menyambung api atau mengulang dari nol?",
+                            color = Color.White
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            colors = ButtonDefaults.buttonColors(containerColor = FlameOrange),
+                            onClick = {
+                                viewModel.useLifeLineRitual()
+                                viewModel.isAwakeningActive = false
+                            }
+                        ) { Text("Gunakan Nyawa", color = Color.White) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            // Reset streak jika user memilih mengulang
+                            viewModel.debugSetDays(0) // Atau panggil fungsi reset di VM
+                            viewModel.isAwakeningActive = false
+                        }) { Text("Mulai dari Awal", color = Color.Gray) }
+                    }
+                )
+            }
         }
     }
 }
-
 // --- HELPER FUNCTIONS ---
 
 fun getDynamicBackground(streak: Int): Brush {
@@ -189,6 +250,42 @@ fun calculateFireVisualState(days: Int): FireVisual {
             FireVisual(Color.White, DeepGold, 3.0f + growth, "ETERNAL SUN", 120)
     }
 }
+
+@Composable
+fun DeadFlameScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 120.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            Icons.Default.LocalFireDepartment,
+            null,
+            modifier = Modifier.size(100.dp),
+            tint = Color.DarkGray
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            "API TELAH PADAM",
+            color = FireRed,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Text(
+            "Gunakan perlindungan untuk menyelamatkan streak\natau biarkan padam sepenuhnya",
+            color = Color.Gray,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
 
 // --- UI COMPONENTS ---
 
@@ -373,18 +470,29 @@ fun FullCalendarSection(streak: Int, viewModel: StreakViewModel) {
                                     val isToday = currentSlotCal.timeInMillis == todayCal.timeInMillis
                                     val isPast = currentSlotCal.timeInMillis < todayCal.timeInMillis
 
-                                    val isSuccess = if (isToday) {
-                                        streakData?.isIgnitedToday ?: false
-                                    } else if (isPast) {
-                                        val diffMillis = todayCal.timeInMillis - currentSlotCal.timeInMillis
-                                        val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                                        val adjustedStreak = if (streakData?.isIgnitedToday == true) streak else streak + 1
-                                        diffDays < adjustedStreak && streak > 0
-                                    } else {
-                                        false // Masa depan gak mungkin sukses
+                                    val protectedDays = streakData?.protectedDays ?: emptyList()
+                                    val start = streakData?.streakStartMillis ?: 0L
+
+                                    val diff = ((currentSlotCal.timeInMillis - start) / DAY).toInt() + 1
+
+                                    val isProtected = diff in protectedDays
+
+                                    val isSuccess = when {
+                                        isToday -> streakData?.isIgnitedToday == true
+                                        isProtected -> true
+                                        isPast -> diff in 1..streak
+                                        else -> false
                                     }
 
-                                    CalendarDayItem(dayNumber, isSuccess, isToday, Modifier.weight(1f))
+
+
+                                    CalendarDayItem(
+                                        day = dayNumber,
+                                        isSuccess = isSuccess,
+                                        isProtected = isProtected,
+                                        isToday = isToday,
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 } else {
                                     Spacer(Modifier.weight(1f))
                                 }
@@ -399,35 +507,75 @@ fun FullCalendarSection(streak: Int, viewModel: StreakViewModel) {
 }
 
 @Composable
-fun CalendarDayItem(day: Int, isSuccess: Boolean, isToday: Boolean, modifier: Modifier) {
+fun CalendarDayItem(
+    day: Int,
+    isSuccess: Boolean,
+    isProtected: Boolean,
+    isToday: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bgColor = when {
+        isProtected -> Color(0xFF2196F3).copy(alpha = 0.35f) // 🔵 PROTECTION BG
+        isSuccess -> FlameOrange.copy(alpha = 0.25f)        // 🔥 SUCCESS
+        else -> Color.White.copy(0.05f)
+    }
+
+    val borderColor = when {
+        isToday -> Color.White
+        isProtected -> Color(0xFF2196F3)
+        isSuccess -> FlameOrange
+        else -> Color.Transparent
+    }
+
+    val textColor = when {
+        isProtected -> Color(0xFFBBDEFB)
+        isSuccess -> Color.White
+        else -> Color.DarkGray
+    }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (isSuccess) FlameOrange.copy(0.2f) else Color.White.copy(0.05f))
-            .border(
-                width = 1.dp,
-                color = if (isToday) Color.White else if (isSuccess) FlameOrange else Color.Transparent,
-                shape = RoundedCornerShape(10.dp)
-            ),
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center
     ) {
+
         if (isSuccess) {
             Icon(
                 Icons.Default.LocalFireDepartment,
                 null,
-                Modifier.size(10.dp).align(Alignment.TopEnd).padding(2.dp),
-                FlameOrange
+                modifier = Modifier
+                    .size(12.dp)
+                    .align(Alignment.TopEnd)
+                    .padding(3.dp),
+                tint = FlameOrange
             )
         }
+
+        if (isProtected) {
+            Icon(
+                Icons.Default.Security,
+                null,
+                modifier = Modifier
+                    .size(13.dp)
+                    .align(Alignment.TopStart)
+                    .padding(3.dp),
+                tint = Color(0xFF64B5F6)
+            )
+        }
+
         Text(
             text = "$day",
-            color = if (isSuccess) Color.White else Color.DarkGray,
+            color = textColor,
             fontSize = 14.sp,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
+
+
 
 @Composable
 fun FrictionSection(progress: Float, onSwipe: (Float) -> Unit) {
@@ -660,21 +808,54 @@ fun InquirySection(onBurn: (String) -> Unit) {
 }
 
 @Composable
-fun HorizontalChainCalendar(streak: Int) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items((1..streak + 10).toList()) { day ->
-            val isDone = day <= streak
+fun HorizontalChainCalendar(
+    streak: Int,
+    protectedDays: List<Int>
+) {
+    val totalDays = streak + protectedDays.size + 10
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items((1..totalDays).toList()) { day ->
+
+            val isProtected = day in protectedDays
+            val isDone = day <= (streak + protectedDays.size)
+
+            val bgColor = when {
+                isProtected -> Color(0xFF3A7BFF).copy(alpha = 0.25f)
+                isDone -> FlameOrange.copy(alpha = 0.25f)
+                else -> Color.Transparent
+            }
+
+            val borderColor = when {
+                isProtected -> Color(0xFF3A7BFF)
+                isDone -> FlameOrange
+                else -> Color.DarkGray
+            }
+
             Box(
-                modifier = Modifier.size(45.dp).clip(RoundedCornerShape(8.dp))
-                    .background(if (isDone) FlameOrange.copy(alpha = 0.2f) else Color.Transparent)
-                    .border(1.dp, if (isDone) FlameOrange else Color.DarkGray, RoundedCornerShape(8.dp)),
+                modifier = Modifier
+                    .size(45.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bgColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("$day", color = if (isDone) Color.White else Color.DarkGray, fontSize = 12.sp)
+                Text(
+                    "$day",
+                    color = borderColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
 }
+
+
+
 
 @Composable
 fun VisualChains(isIgnited: Boolean) {
