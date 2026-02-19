@@ -70,6 +70,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
 
 
+
     // Helper untuk hitung selisih hari
     private fun getDaysDiff(last: Calendar, now: Calendar): Int {
         val date1 = last.clone() as Calendar
@@ -82,23 +83,15 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     private suspend fun handleStreakThreat(data: StreakEntity) {
         when {
             data.hasShield -> {
-                dao.upsertStreak(
-                    data.copy(
-                        hasShield = false,
-                        isIgnitedToday = false
-                    )
-                )
+                dao.upsertStreak(data.copy(hasShield = false, isIgnitedToday = false))
             }
-
             data.lifeLineCount > 0 -> {
                 isAwakeningActive = true
             }
-
-            else -> {
-                dao.resetStreak()
-            }
+            else -> dao.resetStreak()
         }
     }
+
 
 
     /**
@@ -121,25 +114,29 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     fun igniteTheFlame(word: String) {
         viewModelScope.launch {
             val data = _streakData.value ?: return@launch
-            val todayStart = getTodayStartMillis()
 
-            val isFirst = data.currentStreak == 0
+            if (data.isIgnitedToday) return@launch  // 🔥 FIX PENTING
+
+            val todayStart = getTodayStartMillis()
 
             val updatedData = data.copy(
                 currentStreak = data.currentStreak + 1,
                 isIgnitedToday = true,
                 lastBurnedWord = word,
                 lastLoginMillis = todayStart,
-                streakStartMillis = if (isFirst) todayStart else data.streakStartMillis,
+                streakStartMillis = if (data.currentStreak == 0)
+                    todayStart else data.streakStartMillis,
                 highestStreak = maxOf(data.highestStreak, data.currentStreak + 1),
                 hasShield = data.currentStreak + 1 >= 25
             )
 
             dao.upsertStreak(updatedData)
+
             showInquiry = false
             currentFriction = 0f
         }
     }
+
 
 
     /**
@@ -148,28 +145,21 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     fun useLifeLineRitual() {
         viewModelScope.launch {
             val data = _streakData.value ?: return@launch
-
-            val now = System.currentTimeMillis()
-
-            // Hitung hari bolong
-            val diffDays = ((now - data.lastLoginMillis) / DAY).toInt()
-
-            // Hari yang di-protect = hari sebelumnya
-            val protectedDay = data.currentStreak + 1
+            val protectedDayMillis = data.lastLoginMillis + DAY
 
             dao.upsertStreak(
                 data.copy(
-                    currentStreak = data.currentStreak + diffDays, // 🔥 TAMBAH STREAK SESUAI HARI YANG TERLEWAT
-                    protectedDays = data.protectedDays + protectedDay, // 🔵 SIMPAN HARI YANG DIPROTEKSI
-                    lastLoginMillis = now,
+                    currentStreak = data.currentStreak,
+                    protectedDays = data.protectedDays + (data.currentStreak + 1),
+                    lastLoginMillis = protectedDayMillis,
                     isIgnitedToday = false,
-                    lifeLineCount = 0,
-                    lifeLineRecoveryProgress = 0
+                    lifeLineCount = data.lifeLineCount - 1
                 )
             )
+
+            checkStreakLogic() // 🔹 tambahkan ini untuk refresh logika streak
         }
     }
-
 
 
 

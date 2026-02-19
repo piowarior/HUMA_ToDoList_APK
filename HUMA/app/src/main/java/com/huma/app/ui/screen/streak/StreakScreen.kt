@@ -812,7 +812,8 @@ fun HorizontalChainCalendar(
     streak: Int,
     protectedDays: List<Int>
 ) {
-    val totalDays = streak + protectedDays.size + 10
+    val timelineLength = streak + protectedDays.size
+    val totalDays = timelineLength + 10
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -821,17 +822,17 @@ fun HorizontalChainCalendar(
         items((1..totalDays).toList()) { day ->
 
             val isProtected = day in protectedDays
-            val isDone = day <= (streak + protectedDays.size)
+            val isSuccess = day <= streak && day !in protectedDays
 
             val bgColor = when {
-                isProtected -> Color(0xFF3A7BFF).copy(alpha = 0.25f)
-                isDone -> FlameOrange.copy(alpha = 0.25f)
+                isProtected -> Color(0xFF3A7BFF).copy(alpha = 0.30f) // 🔵 SHIELD
+                isSuccess -> FlameOrange.copy(alpha = 0.25f)        // 🔥 SUCCESS
                 else -> Color.Transparent
             }
 
             val borderColor = when {
                 isProtected -> Color(0xFF3A7BFF)
-                isDone -> FlameOrange
+                isSuccess -> FlameOrange
                 else -> Color.DarkGray
             }
 
@@ -853,6 +854,8 @@ fun HorizontalChainCalendar(
         }
     }
 }
+
+
 
 
 
