@@ -33,6 +33,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+import androidx.compose.ui.platform.LocalContext
+import com.huma.app.ui.notification.NotificationHelper
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -68,6 +71,10 @@ fun DashboardScreen(
         Spacer(Modifier.height(26.dp))
 
         QuickMenu(navController)
+
+        Spacer(Modifier.height(24.dp))
+
+        NotificationTestPanel()
 
         Spacer(Modifier.height(28.dp))
 
@@ -130,6 +137,71 @@ fun DashboardScreen(
             )
         }
 
+    }
+}
+
+
+@Composable
+fun NotificationTestPanel() {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+    ) {
+
+        Text("🔔 Test Notification", fontWeight = FontWeight.Bold)
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Button(onClick = {
+                NotificationHelper.show(
+                    context,
+                    "Hai 👋",
+                    "Semoga harimu berjalan dengan baik hari ini."
+                )
+            }) {
+                Text("Greeting")
+            }
+
+            Button(onClick = {
+                NotificationHelper.show(
+                    context,
+                    "Pengingat Harian",
+                    "Sedikit langkah hari ini jauh lebih baik daripada diam."
+                )
+            }) {
+                Text("Reminder")
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            Button(onClick = {
+                NotificationHelper.show(
+                    context,
+                    "Hari ini belum tercatat",
+                    "Masih ada waktu untuk melanjutkan hari ini."
+                )
+            }) {
+                Text("Streak +1")
+            }
+
+            Button(onClick = {
+                NotificationHelper.show(
+                    context,
+                    "Sudah lama tidak aktif",
+                    "Tidak ada kata terlambat untuk memulai lagi."
+                )
+            }) {
+                Text("Streak 5+")
+            }
+        }
     }
 }
 

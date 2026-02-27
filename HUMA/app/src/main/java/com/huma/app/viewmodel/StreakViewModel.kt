@@ -9,6 +9,8 @@ import com.huma.app.data.local.streak.StreakEntity
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+import com.huma.app.utils.daysBetween
+import com.huma.app.utils.addDays
 
 class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
@@ -34,6 +36,9 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     // --- DEBUG MODE (Time Machine) ---
     // Gunakan ini untuk ngetest visual tanpa nunggu berhari-hari
     var debugDaysOffset by mutableStateOf(0)
+    var isDeadPopup by mutableStateOf(false)
+    var isOutOfLifePopup by mutableStateOf(false)
+    var restoreCounter by mutableStateOf(0) // hitung login rutin buat refill protection
 
     /**
      * CEK STATUS STREAK (Panggil setiap kali Screen dibuka)
@@ -50,19 +55,44 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
                 return@launch
             }
 
-            val todayStart = getTodayStartMillis()
-            val lastLoginDay = data.lastLoginMillis
-
-            val diffDays = ((todayStart - lastLoginDay) / DAY).toInt()
+            val today = getTodayStartMillis()
+            val diffDays = daysBetween(data.lastLoginMillis, today)
 
             when {
-                diffDays == 0 -> return@launch
-
-                diffDays == 1 -> {
-                    dao.upsertStreak(data.copy(isIgnitedToday = false))
+                diffDays == 0 -> {
+                    // Jika hari baru tapi flag masih true → reset
+                    if (data.isIgnitedToday) {
+                        dao.upsertStreak(data.copy(isIgnitedToday = false))
+                    }
+                    return@launch
                 }
 
-                diffDays > 1 -> handleStreakThreat(data)
+                diffDays == 1 -> {
+                    var counter = restoreCounter + 1
+
+                    if (!data.hasShield && counter >= 7) {
+                        dao.upsertStreak(
+                            data.copy(
+                                isIgnitedToday = false,
+                                hasShield = true
+                            )
+                        )
+                        restoreCounter = 0
+                    } else {
+                        dao.upsertStreak(data.copy(isIgnitedToday = false))
+                        restoreCounter = counter
+                    }
+                }
+
+                diffDays == 2 -> {
+                    // 🔥 bolong 1 hari → selalu popup pilihan
+                    isAwakeningActive = true
+                }
+
+                diffDays >= 3 -> {
+                    // 🔴 bolong ≥ 2 hari → mati total
+                    isDeadPopup = true
+                }
             }
         }
     }
@@ -72,13 +102,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
 
     // Helper untuk hitung selisih hari
-    private fun getDaysDiff(last: Calendar, now: Calendar): Int {
-        val date1 = last.clone() as Calendar
-        val date2 = now.clone() as Calendar
-        date1.set(Calendar.HOUR_OF_DAY, 0); date1.set(Calendar.MINUTE, 0); date1.set(Calendar.SECOND, 0); date1.set(Calendar.MILLISECOND, 0)
-        date2.set(Calendar.HOUR_OF_DAY, 0); date2.set(Calendar.MINUTE, 0); date2.set(Calendar.SECOND, 0); date2.set(Calendar.MILLISECOND, 0)
-        return ((date2.timeInMillis - date1.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
-    }
+
 
     private suspend fun handleStreakThreat(data: StreakEntity) {
         when {
@@ -88,7 +112,9 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
             data.lifeLineCount > 0 -> {
                 isAwakeningActive = true
             }
-            else -> dao.resetStreak()
+            else -> {
+                isDeadPopup = true
+            }
         }
     }
 
@@ -114,24 +140,36 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     fun igniteTheFlame(word: String) {
         viewModelScope.launch {
             val data = _streakData.value ?: return@launch
-
-            if (data.isIgnitedToday) return@launch  // 🔥 FIX PENTING
+            if (data.isIgnitedToday) return@launch
 
             val todayStart = getTodayStartMillis()
 
+            if (daysBetween(data.lastLoginMillis, todayStart) >= 1) {
+                dao.upsertStreak(data.copy(isIgnitedToday = false))
+            }
+            var newStreak = data.currentStreak
+
+            // 🔹 Jika hari sebelumnya protected tapi belum di-ignite, anggap valid
+            if (data.protectedDays.contains(newStreak + 1)) {
+                newStreak += 1
+            }
+
+            // Tambah streak hari ini
+            newStreak += 1
+
             val updatedData = data.copy(
-                currentStreak = data.currentStreak + 1,
+                currentStreak = newStreak,
                 isIgnitedToday = true,
                 lastBurnedWord = word,
                 lastLoginMillis = todayStart,
-                streakStartMillis = if (data.currentStreak == 0)
-                    todayStart else data.streakStartMillis,
-                highestStreak = maxOf(data.highestStreak, data.currentStreak + 1),
-                hasShield = data.currentStreak + 1 >= 25
+                streakStartMillis = if (data.currentStreak == 0) todayStart else data.streakStartMillis,
+                highestStreak = maxOf(data.highestStreak, newStreak),
+                hasShield = newStreak >= 25
             )
 
             dao.upsertStreak(updatedData)
 
+            // Reset UI friction
             showInquiry = false
             currentFriction = 0f
         }
@@ -145,21 +183,30 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     fun useLifeLineRitual() {
         viewModelScope.launch {
             val data = _streakData.value ?: return@launch
-            val protectedDayMillis = data.lastLoginMillis + DAY
+
+            if (data.lifeLineCount <= 0 && !data.hasShield) {
+                isOutOfLifePopup = true
+                return@launch
+            }
+
+            val protectedDay = data.currentStreak + 1
 
             dao.upsertStreak(
                 data.copy(
-                    currentStreak = data.currentStreak,
-                    protectedDays = data.protectedDays + (data.currentStreak + 1),
-                    lastLoginMillis = protectedDayMillis,
+                    protectedDays = data.protectedDays + protectedDay,
+                    lastLoginMillis = getTodayStartMillis(),
                     isIgnitedToday = false,
-                    lifeLineCount = data.lifeLineCount - 1
+                    lifeLineCount = (data.lifeLineCount - 1).coerceAtLeast(0),
+                    hasShield = false
                 )
             )
 
-            checkStreakLogic() // 🔹 tambahkan ini untuk refresh logika streak
+            checkStreakLogic()
+            isAwakeningActive = false
         }
     }
+
+
 
 
 
@@ -169,6 +216,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
      * Menggabungkan data asli + debug offset
      */
     fun getEffectiveStreak(): Int = (_streakData.value?.currentStreak ?: 0) + debugDaysOffset
+
 
     /**
      * DETERMINASI VISUAL (Mega Detail Per Hari)
@@ -185,6 +233,23 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
             days in 100..199 -> FireLevel.SUPERNOVA
             days in 200..364 -> FireLevel.DRAGON_BREATH
             else -> FireLevel.ETERNAL_SUN
+        }
+    }
+
+    fun resetTotalStreak() {
+        viewModelScope.launch {
+            dao.upsertStreak(
+                StreakEntity(id = 0)
+            )
+
+            // Reset UI State
+            currentFriction = 0f
+            showInquiry = false
+            isAwakeningActive = false
+            isDeadPopup = false
+            isOutOfLifePopup = false
+            restoreCounter = 0
+            debugDaysOffset = 0
         }
     }
 
@@ -209,6 +274,8 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         // Implementasi sederhana: MediaPlayer.create(context, soundRes).start()
     }
 }
+
+
 
 private const val DAY = 1000L * 60 * 60 * 24
 

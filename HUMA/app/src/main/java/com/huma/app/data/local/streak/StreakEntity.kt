@@ -11,6 +11,7 @@ data class StreakEntity(
     val currentStreak: Int = 0,
     val highestStreak: Int = 0,
     val lastLoginMillis: Long = 0,
+    val lastDayId: Long = 0,
 
     // --- STATUS RITUAL PENYULUTAN (The Great Ignition) ---
     // false = belum ritual hari ini (api dingin/bara), true = sudah ritual (api membara)

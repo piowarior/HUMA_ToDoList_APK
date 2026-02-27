@@ -51,6 +51,9 @@ import com.huma.app.viewmodel.StreakViewModel
 import com.huma.app.viewmodel.StreakViewModelFactory
 import com.huma.app.ui.screen.streak.StreakScreen
 
+import com.huma.app.ui.notification.NotificationHelper
+import com.huma.app.ui.notification.NotificationScheduler
+
 
 
 class MainActivity : ComponentActivity() {
@@ -64,6 +67,8 @@ class MainActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
+
+
 
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -101,9 +106,11 @@ class MainActivity : ComponentActivity() {
 
             // 🔒 Focus Mode (BARU)
             createFocusNotificationChannel(this)
+            NotificationHelper.init(this)   // 🔥 TAMBAH INI
         }
 
-
+        // 🔥 BARU schedule worker DI SINI
+        NotificationScheduler.scheduleAll(this)
 
         // 1. Inisialisasi Database yang benar (AppDatabase)
         val database = AppDatabase.getInstance(this)

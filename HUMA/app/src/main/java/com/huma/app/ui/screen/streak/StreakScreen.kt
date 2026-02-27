@@ -42,6 +42,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.togetherWith
+import com.huma.app.utils.addDays
+import com.huma.app.utils.daysBetween
 
 
 // --- WARNA PREMIUM (FIX TIDAK ERROR) ---
@@ -203,9 +205,47 @@ fun StreakScreen(viewModel: StreakViewModel) {
                     dismissButton = {
                         TextButton(onClick = {
                             // Reset streak jika user memilih mengulang
-                            viewModel.debugSetDays(0) // Atau panggil fungsi reset di VM
+                            viewModel.resetTotalStreak()// Atau panggil fungsi reset di VM
                             viewModel.isAwakeningActive = false
                         }) { Text("Mulai dari Awal", color = Color.Gray) }
+                    }
+                )
+            }
+
+// 🔴 POPUP: API TELAH PADAM
+            if (viewModel.isDeadPopup) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    containerColor = Color(0xFF1A1A1A),
+                    title = { Text("API TELAH PADAM", color = FireRed, fontWeight = FontWeight.Bold) },
+                    text = { Text("Kamu melewatkan beberapa hari. Api telah padam.", color = Color.White) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.isDeadPopup = false
+                                viewModel.resetTotalStreak()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = FlameOrange)
+                        ) { Text("Ulangi", color = Color.White) }
+                    }
+                )
+            }
+
+// 🔴 POPUP: PROTECTION & NYAWA HABIS
+            if (viewModel.isOutOfLifePopup) {
+                AlertDialog(
+                    onDismissRequest = {},
+                    containerColor = Color(0xFF1A1A1A),
+                    title = { Text("PROTECTION & NYAWA HABIS", color = FireRed, fontWeight = FontWeight.Bold) },
+                    text = { Text("Kamu telah kehabisan perlindungan. Kembali ke awal streak.", color = Color.White) },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.isOutOfLifePopup = false
+                                viewModel.resetTotalStreak()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = FlameOrange)
+                        ) { Text("Mulai Ulang", color = Color.White) }
                     }
                 )
             }
@@ -429,7 +469,12 @@ fun FullCalendarSection(streak: Int, viewModel: StreakViewModel) {
             verticalAlignment = Alignment.Top
         ) { page ->
             val monthCal = Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_MONTH, 1)   // 🔥 RESET KE TANGGAL 1
                 add(Calendar.MONTH, page - startIndex)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }
 
             val monthName = java.text.SimpleDateFormat("MMMM yyyy", Locale.getDefault())
@@ -473,7 +518,7 @@ fun FullCalendarSection(streak: Int, viewModel: StreakViewModel) {
                                     val protectedDays = streakData?.protectedDays ?: emptyList()
                                     val start = streakData?.streakStartMillis ?: 0L
 
-                                    val diff = ((currentSlotCal.timeInMillis - start) / DAY).toInt() + 1
+                                    val diff = daysBetween(start, currentSlotCal.timeInMillis) + 1
 
                                     val isProtected = diff in protectedDays
 
@@ -810,10 +855,18 @@ fun InquirySection(onBurn: (String) -> Unit) {
 @Composable
 fun HorizontalChainCalendar(
     streak: Int,
-    protectedDays: List<Int>
+    protectedDays: List<Int>,
+    streakData: StreakEntity? = null
 ) {
-    val timelineLength = streak + protectedDays.size
+    val timelineLength = maxOf(streak, protectedDays.maxOrNull() ?: 0)
     val totalDays = timelineLength + 10
+
+    val todayCal = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -822,11 +875,29 @@ fun HorizontalChainCalendar(
         items((1..totalDays).toList()) { day ->
 
             val isProtected = day in protectedDays
-            val isSuccess = day <= streak && day !in protectedDays
+
+            val start = streakData?.streakStartMillis ?: 0L
+            val currentSlotCal = Calendar.getInstance().apply {
+                timeInMillis = addDays(start, day - 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val isToday = currentSlotCal.timeInMillis == todayCal.timeInMillis
+
+            // FIX LOGIKA: hari ini bisa di-ignite walaupun hari sebelumnya protected
+            val isSuccess = when {
+                isToday && streakData?.isIgnitedToday == true -> true
+                day <= streak -> true
+                isProtected -> true
+                else -> false
+            }
 
             val bgColor = when {
                 isProtected -> Color(0xFF3A7BFF).copy(alpha = 0.30f) // 🔵 SHIELD
-                isSuccess -> FlameOrange.copy(alpha = 0.25f)        // 🔥 SUCCESS
+                isSuccess -> FlameOrange.copy(alpha = 0.25f)          // 🔥 SUCCESS
                 else -> Color.Transparent
             }
 
@@ -854,7 +925,6 @@ fun HorizontalChainCalendar(
         }
     }
 }
-
 
 
 
@@ -934,7 +1004,7 @@ object StreakPhrases {
 
     fun getTodayPhrase(): String {
         // Menggunakan seed hari agar setiap hari ganti secara otomatis namun tetap sama seharian
-        val dayIndex = (System.currentTimeMillis() / (1000 * 60 * 60 * 24)).toInt()
+        val dayIndex = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
         return phrases[dayIndex % phrases.size]
     }
 }
