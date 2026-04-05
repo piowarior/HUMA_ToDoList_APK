@@ -14,8 +14,17 @@
         android:layout_height="wrap_content"
         android:text="Title"
         android:textStyle="bold"
-        android:textSize="16sp"
-        android:textColor="#000"/>
+        android:textSize="25sp"
+        android:textColor="#000000"
+        android:paddingBottom="6dp"
+        android:maxLines="1"
+        android:ellipsize="end"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="6dp"
+        android:background="#DDDDDD"/>
 
     <!-- ListView untuk scroll panjang -->
     <ListView

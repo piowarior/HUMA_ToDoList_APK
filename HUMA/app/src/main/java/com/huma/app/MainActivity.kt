@@ -37,8 +37,9 @@ import com.huma.app.ui.screen.lifearea.LifeAreaScreen
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.huma.app.ui.screen.lifearea.AreaDetailScreen
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen // 🔥 TAMBAHKAN INI
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.huma.app.ui.screen.note.NoteEditorScreen
+import androidx.compose.runtime.LaunchedEffect
 import com.huma.app.ui.screen.note.NoteScreen
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
@@ -50,37 +51,31 @@ import com.huma.app.viewmodel.NoteViewModelFactory
 import com.huma.app.viewmodel.StreakViewModel
 import com.huma.app.viewmodel.StreakViewModelFactory
 import com.huma.app.ui.screen.streak.StreakScreen
-
 import com.huma.app.ui.notification.NotificationHelper
 import com.huma.app.ui.notification.NotificationScheduler
-
 import androidx.compose.ui.platform.LocalContext
-
-
+import com.huma.app.ui.feature.MindGamesScreen
+import com.huma.app.ui.feature.WheelScreen
+import com.huma.app.ui.feature.TimeCapsuleScreen
+import com.huma.app.ui.feature.CommitmentScreen
+import com.huma.app.ui.feature.AddCommitmentScreen
+import com.huma.app.viewmodel.CapsuleViewModel
+import com.huma.app.viewmodel.CommitmentViewModel
 
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            // kalau false, notif memang tidak boleh muncul
-        }
-
-
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
-
-
-
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // 🔥 Kuncinya di sini: Langsung hapus splash sistem tanpa animasi tambahan
         splashScreen.setOnExitAnimationListener { splashProvider ->
             splashProvider.remove()
         }
 
-        // 🔔 REQUEST NOTIFICATION PERMISSION (ANDROID 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
@@ -93,11 +88,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // 🔔 NOTIFICATION CHANNEL (WAJIB ANDROID 8+)
-        // 🔔 NOTIFICATION CHANNELS (ANDROID 8+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
-            // Task Reminder (SUDAH ADA)
             val taskChannel = NotificationChannel(
                 "task_channel",
                 "Task Reminder",
@@ -106,150 +97,79 @@ class MainActivity : ComponentActivity() {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(taskChannel)
 
-            // 🔒 Focus Mode (BARU)
             createFocusNotificationChannel(this)
-            NotificationHelper.init(this)   // 🔥 TAMBAH INI
+            NotificationHelper.init(this)
         }
 
-        // 🔥 BARU schedule worker DI SINI
         NotificationScheduler.scheduleAll(this)
 
-        // 1. Inisialisasi Database yang benar (AppDatabase)
         val database = AppDatabase.getInstance(this)
         val repository = TaskRepository(database.taskDao())
 
-        // 2. Siapkan ViewModel menggunakan Factory
         val factory = TaskViewModelFactory(repository)
         val taskViewModel = ViewModelProvider(this, factory)[TaskViewModel::class.java]
 
-        // Setup Note ViewModel (Tambahkan ini di bawah taskViewModel)
         val noteFactory = NoteViewModelFactory(database.noteDao())
         val noteViewModel = ViewModelProvider(this, noteFactory)[NoteViewModel::class.java]
-        // Inisialisasi Streak ViewModel
+        
         val streakFactory = StreakViewModelFactory(database.streakDao())
         val streakViewModel = ViewModelProvider(this, streakFactory)[StreakViewModel::class.java]
+
+        val capsuleViewModel = ViewModelProvider(this)[CapsuleViewModel::class.java]
+        val commitmentViewModel = ViewModelProvider(this)[CommitmentViewModel::class.java]
 
         setContent {
             val context = LocalContext.current
             val navController: NavHostController = rememberNavController()
+            val openNoteId = intent.getStringExtra("open_note_id")
+            
+            LaunchedEffect(openNoteId) {
+                if (openNoteId != null) {
+                    navController.navigate("notes_list")
+                }
+            }
+            
             val noteEntities by noteViewModel.allNotes.collectAsState(initial = emptyList())
             val globalNotes = noteEntities.map { entity ->
                 NoteData(entity.id, entity.title, entity.blocks, entity.date)
             }
-
 
             Surface(color = MaterialTheme.colorScheme.background) {
                 NavHost(
                     navController = navController,
                     startDestination = "splash",
                 ) {
-                    // --- Auth & Splash ---
-                    composable("splash") {
-                        SplashScreen(navController)
-                    }
-                    composable("login") {
-                        LoginScreen(navController)
-                    }
-
-                    // --- Dashboard ---
-                    composable("dashboard") {
-                        DashboardScreen(navController, taskViewModel)
-                    }
-
-                    composable("tasks") {
-                        TaskScreen(
-                            viewModel = taskViewModel,
-                            mode = "all",
-                            navController = navController
-                        )
-                    }
-
-                    composable("tasks_today") {
-                        TaskScreen(
-                            viewModel = taskViewModel,
-                            mode = "today",
-                            navController = navController
-                        )
-                    }
-
-                    composable("tasks_upcoming") {
-                        UpcomingTaskScreen(
-                            taskViewModel = taskViewModel,
-                            navController = navController
-                        )
-                    }
-
-
-
+                    composable("splash") { SplashScreen(navController) }
+                    composable("login") { LoginScreen(navController) }
+                    composable("dashboard") { DashboardScreen(navController, taskViewModel, commitmentViewModel) }
+                    composable("tasks") { TaskScreen(taskViewModel, "all", navController) }
+                    composable("tasks_today") { TaskScreen(taskViewModel, "today", navController) }
+                    composable("tasks_upcoming") { UpcomingTaskScreen(taskViewModel, navController) }
                     composable("add_task/{type}") { backStackEntry ->
                         val type = backStackEntry.arguments?.getString("type")
-
-                        AddTaskScreen(
-                            navController = navController,
-                            viewModel = taskViewModel,
-                            isUpcoming = type == "upcoming"
-                        )
+                        AddTaskScreen(navController, taskViewModel, type == "upcoming")
                     }
-
                     composable("task_detail/{taskId}") { backStackEntry ->
-                        val taskId = backStackEntry.arguments
-                            ?.getString("taskId")
-                            ?.toIntOrNull() ?: return@composable
-
-                        TaskDetailScreen(
-                            navController = navController,
-                            taskId = taskId,
-                            viewModel = taskViewModel
-                        )
+                        val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
+                        TaskDetailScreen(navController, taskId, taskViewModel)
                     }
-
                     composable("edit_task/{taskId}") { backStackEntry ->
-                        val taskId = backStackEntry.arguments
-                            ?.getString("taskId")
-                            ?.toIntOrNull() ?: return@composable
-
-                        EditTaskScreen(
-                            taskId = taskId,
-                            navController = navController,
-                            viewModel = taskViewModel
-                        )
+                        val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
+                        EditTaskScreen(taskId, navController, taskViewModel)
                     }
-
-
-
-
-                    // Rute tambahan untuk Quick Menu (agar tidak crash saat diklik)
-                    composable("focus") {
-                        FocusScreen(
-                            navController = navController,
-                            taskViewModel = taskViewModel
-                        )
-                    }
-
-                    composable("streak") {
-                        // Pastikan StreakScreen sudah di-import:
-                        // import com.huma.app.ui.screen.streak.StreakScreen
-                        StreakScreen(viewModel = streakViewModel)
-                    }
-
-                    composable("life_area") {
-                        LifeAreaScreen(
-                            navController = navController,
-                            taskViewModel = taskViewModel
-                        )
-                    }
-                    // SESUDAHNYA (Fix)
+                    composable("focus") { FocusScreen(navController, taskViewModel) }
+                    composable("streak") { StreakScreen(streakViewModel) }
+                    composable("life_area") { LifeAreaScreen(navController, taskViewModel) }
                     composable("notes_list") {
-                        NoteScreen(
-                            navController = navController,
-                            globalNotes = globalNotes,
-                            onDeleteNote = { noteToDelete ->
-                                // Kita panggil fungsi delete dari noteViewModel
-                                noteViewModel.deleteNote(context, noteToDelete)
-                            }
-                        )
+                        NoteScreen(navController, globalNotes) { noteToDelete ->
+                            noteViewModel.deleteNote(context, noteToDelete)
+                        }
                     }
-
+                    composable("wheel") { WheelScreen() }
+                    composable("capsule") { TimeCapsuleScreen(capsuleViewModel) }
+                    composable("mind_games") { MindGamesScreen(navController = navController) }
+                    composable("commitments") { CommitmentScreen(navController = navController) }
+                    composable("add_commitment") { AddCommitmentScreen(navController = navController) }
                     composable(
                         route = "note_editor?noteId={noteId}",
                         arguments = listOf(navArgument("noteId") {
@@ -259,34 +179,17 @@ class MainActivity : ComponentActivity() {
                         })
                     ) { backStackEntry ->
                         val noteId = backStackEntry.arguments?.getString("noteId")
-
-                        NoteEditorScreen(
-                            navController = navController,
-                            noteId = noteId, // Kirim ID ke editor
-                            globalNotes = globalNotes // Kirim list besar ke editor buat dicari datanya
-                        ) { newNote ->
-                            noteViewModel.saveNote(context,newNote)
+                        NoteEditorScreen(navController, noteId, globalNotes) { newNote ->
+                            noteViewModel.saveNote(context, newNote)
                         }
                     }
-
-                    composable("analytics") {
-                        // Pastikan AnalyticsScreen sudah di-import dari package:
-                        // com.huma.app.ui.screen.analytics.AnalyticsScreen
-                        AnalyticsScreen(
-                            navController = navController,
-                            viewModel = taskViewModel
-                        )
-                    }
+                    composable("analytics") { AnalyticsScreen(navController, taskViewModel) }
                     composable(
                         route = "area_detail/{areaName}",
                         arguments = listOf(navArgument("areaName") { type = NavType.StringType })
                     ) { backStackEntry ->
                         val areaName = backStackEntry.arguments?.getString("areaName") ?: ""
-                        AreaDetailScreen(
-                            areaName = areaName,
-                            navController = navController,
-                            taskViewModel = taskViewModel
-                        )
+                        AreaDetailScreen(areaName, navController, taskViewModel)
                     }
                 }
             }

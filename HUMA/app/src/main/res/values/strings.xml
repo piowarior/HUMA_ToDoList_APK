@@ -1,3 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">HUMA</string>
+
+    <string name="app_name">Huma</string>
+
+    <string name="widget_note_desc">
+        Menampilkan catatan langsung di home screen
+    </string>
+
+    <string name="widget_task_desc">
+        Menampilkan Section Task Today
+    </string>
+
 </resources>
