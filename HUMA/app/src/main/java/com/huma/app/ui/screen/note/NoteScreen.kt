@@ -33,11 +33,18 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import com.huma.app.widget.NoteWidgetPrefs
+import com.huma.app.widget.NoteWidgetProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteScreen(navController: NavController, globalNotes: List<NoteData>, onDeleteNote: (NoteData) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     // Filter logika
     val filteredNotes = remember(searchQuery, globalNotes) {
@@ -106,7 +113,23 @@ fun NoteScreen(navController: NavController, globalNotes: List<NoteData>, onDele
                                 navController.navigate("note_editor?noteId=${note.id}")
                             },
                             onDelete = {
-                                onDeleteNote(note) // Memanggil fungsi hapus
+                                onDeleteNote(note)
+                            },
+                            setNoteAsWidget = { selectedNote ->
+
+                                NoteWidgetPrefs.setWidgetNote(context, selectedNote.id)
+
+                                val intent = Intent(context, NoteWidgetProvider::class.java)
+                                intent.action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+
+                                val ids = AppWidgetManager.getInstance(context)
+                                    .getAppWidgetIds(
+                                        ComponentName(context, NoteWidgetProvider::class.java)
+                                    )
+
+                                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
+
+                                context.sendBroadcast(intent)
                             }
                         )
                     }
@@ -118,7 +141,8 @@ fun NoteScreen(navController: NavController, globalNotes: List<NoteData>, onDele
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NoteItemCard(note: NoteData, onDelete: () -> Unit, onClick: () -> Unit) {
+fun NoteItemCard(note: NoteData, onDelete: () -> Unit, onClick: () -> Unit,
+                 setNoteAsWidget: (NoteData) -> Unit) {
     // State untuk kontrol menu hapus
     var showMenu by remember { mutableStateOf(false) }
     // Untuk efek getar
@@ -201,14 +225,21 @@ fun NoteItemCard(note: NoteData, onDelete: () -> Unit, onClick: () -> Unit) {
         // MENU POPUP (Muncul saat ditekan lama)
         DropdownMenu(
             expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            modifier = Modifier.background(Color.White)
+            onDismissRequest = { showMenu = false }
         ) {
+
+            DropdownMenuItem(
+                text = { Text("Set as Widget") },
+                leadingIcon = { Icon(Icons.Default.Add, null) },
+                onClick = {
+                    showMenu = false
+                    setNoteAsWidget(note)
+                }
+            )
+
             DropdownMenuItem(
                 text = { Text("Hapus Catatan", color = Color.Red) },
-                // Ganti Icons.Default.Delete menjadi Icons.Default.DeleteOutline atau Icons.Default.Clear
-                // Ganti baris leadingIcon di dalam DropdownMenuItem:
-                leadingIcon = { Icon(Icons.Default.Close, contentDescription = null, tint = Color.Red) },
+                leadingIcon = { Icon(Icons.Default.Close, null, tint = Color.Red) },
                 onClick = {
                     showMenu = false
                     onDelete()

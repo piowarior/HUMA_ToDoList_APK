@@ -222,7 +222,7 @@ fun EditTaskScreen(
                 enabled = hasChanges,
                 onClick = {
                     viewModel.updateTask(
-                        task!!.copy(
+                        context,task!!.copy(
                             title = title,
                             description = desc,
                             priority = priority,

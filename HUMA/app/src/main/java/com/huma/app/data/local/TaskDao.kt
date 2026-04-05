@@ -43,4 +43,16 @@ interface TaskDao {
         ORDER BY startDate ASC
     """)
     fun getUpcomingTasks(todayEnd: Long): Flow<List<TaskEntity>>
+
+    @Query("""
+    SELECT * FROM tasks
+    WHERE startDate <= strftime('%s','now','localtime') * 1000
+    AND isDone = 0
+    ORDER BY startDate ASC
+    """)
+        fun getTodayTasksWidget(): List<TaskEntity>
+
+    @Query("UPDATE tasks SET isDone = 1 WHERE id = :taskId")
+    fun markTaskDone(taskId: Int)
+
 }

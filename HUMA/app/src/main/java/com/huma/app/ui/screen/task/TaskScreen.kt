@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.huma.app.data.local.TaskEntity
@@ -24,6 +25,7 @@ fun TaskScreen(
     mode: String,
     navController: NavController
 ) {
+    val context = LocalContext.current
     val tasks by viewModel.tasks.collectAsState()
 
     val calendar = remember { java.util.Calendar.getInstance() }
@@ -93,7 +95,7 @@ fun TaskScreen(
                         navController.navigate("task_detail/${task.id}")
                     },
                     onToggleDone = {
-                        viewModel.toggleTaskCompletion(it)
+                        viewModel.toggleTaskCompletion(context,it)
                     }
                 )
             }

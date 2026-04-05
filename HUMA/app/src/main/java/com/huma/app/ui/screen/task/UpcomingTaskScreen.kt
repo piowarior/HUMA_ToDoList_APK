@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -24,6 +25,7 @@ fun UpcomingTaskScreen(
     taskViewModel: TaskViewModel,
     navController: NavController) {
 
+    val context = LocalContext.current
     val groupedTasks by taskViewModel.upcomingGrouped
         .collectAsState(initial = emptyMap())
 
@@ -57,7 +59,7 @@ fun UpcomingTaskScreen(
                         navController.navigate("task_detail/${task.id}")
                     },
                     onToggleDone = {
-                        taskViewModel.toggleTaskCompletion(it)
+                        taskViewModel.toggleTaskCompletion(context,it)
                     }
                 )
             }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.huma.app.data.local.LifeArea
 import com.huma.app.ui.viewmodel.TaskViewModel
+import androidx.compose.ui.platform.LocalContext
 import com.huma.app.ui.components.task.TaskItem // 🔥 Import TaskItem kamu
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,6 +32,7 @@ fun AreaDetailScreen(
     navController: NavController,
     taskViewModel: TaskViewModel
 ) {
+    val context = LocalContext.current
     val allTasks by taskViewModel.tasks.collectAsState()
 
     val area = LifeArea.values().find { it.name == areaName } ?: LifeArea.PRIBADI
@@ -39,6 +41,7 @@ fun AreaDetailScreen(
     val areaTasks = allTasks.filter { it.lifeArea == areaName }
     val activeTasks = areaTasks.filter { !it.isDone }
     val doneTasks = areaTasks.filter { it.isDone }
+
 
     Scaffold(
         topBar = {
@@ -91,7 +94,7 @@ fun AreaDetailScreen(
                                 task = task,
                                 showDate = false,
                                 onClick = { navController.navigate("task_detail/${task.id}") },
-                                onToggleDone = { taskViewModel.toggleTaskCompletion(it) }
+                                onToggleDone = { taskViewModel.toggleTaskCompletion(context,it) }
                             )
                         }
                         Spacer(Modifier.height(10.dp))
@@ -123,8 +126,8 @@ fun AreaDetailScreen(
                             // 🔥 Pakai komponen DoneTaskItem agar tampilannya beda (pudar & tanpa checkbox)
                             com.huma.app.ui.screen.task.DoneTaskItem(
                                 task = task,
-                                onRestore = { taskViewModel.toggleTaskCompletion(it) },
-                                onDelete = { taskViewModel.deleteTask(it) }
+                                onRestore = { taskViewModel.toggleTaskCompletion(context,it) },
+                                onDelete = { taskViewModel.deleteTask(context,it) }
                             )
                         }
                     }

@@ -26,9 +26,36 @@
             android:foregroundServiceType="specialUse"
             android:exported="false" />
 
+        <service
+            android:name=".ui.widget.TaskWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false"/>
+
+        <service
+            android:name=".widget.NoteWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false"/>
+
         <receiver
             android:name=".ui.notification.FocusActionReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".ui.widget.TaskCheckboxReceiver"
+            android:exported="true"/>
+
+        <receiver
+            android:name=".widget.NoteWidgetProvider"
+            android:exported="false">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/note_widget_info"/>
+        </receiver>
 
         <receiver
             android:name=".ui.widget.TaskTodayWidget"
@@ -41,6 +68,11 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/task_today_widget_info"/>
         </receiver>
+
+        <activity
+            android:name=".ui.widget.WidgetConfirmActivity"
+            android:theme="@style/Theme.Material3.DayNight.Dialog"
+            android:exported="false"/>
 
         <activity
             android:name=".MainActivity"

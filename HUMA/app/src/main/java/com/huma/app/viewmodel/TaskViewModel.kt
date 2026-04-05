@@ -10,6 +10,7 @@ import com.huma.app.data.repository.TaskRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import com.huma.app.ui.widget.WidgetUpdater
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.*
@@ -144,35 +145,44 @@ class TaskViewModel(
 
 
     // ================= CRUD =================
-    fun addTask(task: TaskEntity) {
+    fun addTask(context: android.content.Context, task: TaskEntity) {
         viewModelScope.launch {
             repository.insert(task)
+            WidgetUpdater.update(context)
         }
     }
 
-    fun updateTask(task: TaskEntity) {
+    fun updateTask(context: android.content.Context, task: TaskEntity) {
         viewModelScope.launch {
             repository.update(task)
+            WidgetUpdater.update(context)
         }
     }
 
-    fun deleteTask(task: TaskEntity) {
+    fun deleteTask(context: android.content.Context, task: TaskEntity) {
         viewModelScope.launch {
             repository.delete(task)
+            WidgetUpdater.update(context)
         }
     }
 
     // ================= TOGGLE =================
-    fun toggleTaskCompletion(task: TaskEntity) {
+    fun toggleTaskCompletion(context: android.content.Context, task: TaskEntity) {
         viewModelScope.launch {
+
             val nextState = !task.isDone
+
             repository.update(
                 task.copy(
                     isDone = nextState,
-                    // 🔥 Kalau true isi waktu sekarang, kalau false (restore) balikin null
-                    completedAt = if (nextState) System.currentTimeMillis() else null
+                    completedAt = if (nextState)
+                        System.currentTimeMillis()
+                    else
+                        null
                 )
             )
+
+            WidgetUpdater.update(context)
         }
     }
 

@@ -365,6 +365,7 @@ fun AddTaskScreen(
 
                 // Simpan ke DB
                 viewModel.addTask(
+                    context,
                     TaskEntity(
                         title = title,
                         description = description,

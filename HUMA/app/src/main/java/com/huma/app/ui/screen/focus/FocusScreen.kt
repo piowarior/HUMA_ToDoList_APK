@@ -103,10 +103,10 @@ fun FocusScreen(
                 if (done) {
                     // Jika task baru (id == 0), insert dulu baru set selesai
                     if (selectedTask!!.id == 0) {
-                        taskViewModel.addTask(selectedTask!!.copy(isDone = true))
+                        taskViewModel.addTask(context,selectedTask!!.copy(isDone = true))
                     } else {
                         // Jika task lama, tinggal toggle completion
-                        taskViewModel.toggleTaskCompletion(selectedTask!!)
+                        taskViewModel.toggleTaskCompletion(context, selectedTask!!)
                     }
                 }
                 context.stopService(Intent(context, FocusService::class.java))

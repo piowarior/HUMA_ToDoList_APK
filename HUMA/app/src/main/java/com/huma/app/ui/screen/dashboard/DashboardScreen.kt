@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.huma.app.ui.notification.NotificationHelper
 
 
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DashboardScreen(
@@ -46,6 +47,7 @@ fun DashboardScreen(
     val todayTasks by taskViewModel.todayTasks.collectAsState()
     val upcomingGrouped by taskViewModel.upcomingGrouped.collectAsState()
     var showDoneTasks by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
 
     Column(
@@ -92,7 +94,7 @@ fun DashboardScreen(
                 navController.navigate("task_detail/$taskId")
             },
             onToggleDone = { task ->
-                taskViewModel.toggleTaskCompletion(task)
+                taskViewModel.toggleTaskCompletion(context, task)
             }
         )
 
@@ -111,7 +113,7 @@ fun DashboardScreen(
                 navController.navigate("task_detail/$taskId")
             },
             onToggleDone = { task ->
-                taskViewModel.toggleTaskCompletion(task)
+                taskViewModel.toggleTaskCompletion(context, task)
             }
         )
 
@@ -132,8 +134,8 @@ fun DashboardScreen(
         AnimatedVisibility(visible = showDoneTasks) {
             DoneTasksSection(
                 groupedTasks = taskViewModel.doneTasks.collectAsState().value, // pake doneTasks, bukan doneGrouped
-                onRestore = { task -> taskViewModel.toggleTaskCompletion(task) },
-                onDelete = { task -> taskViewModel.deleteTask(task) }
+                onRestore = { task -> taskViewModel.toggleTaskCompletion(context, task) },
+                onDelete = { task -> taskViewModel.deleteTask(context,task) }
             )
         }
 

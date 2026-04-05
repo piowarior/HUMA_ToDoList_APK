@@ -54,6 +54,8 @@ import com.huma.app.ui.screen.streak.StreakScreen
 import com.huma.app.ui.notification.NotificationHelper
 import com.huma.app.ui.notification.NotificationScheduler
 
+import androidx.compose.ui.platform.LocalContext
+
 
 
 class MainActivity : ComponentActivity() {
@@ -128,6 +130,7 @@ class MainActivity : ComponentActivity() {
         val streakViewModel = ViewModelProvider(this, streakFactory)[StreakViewModel::class.java]
 
         setContent {
+            val context = LocalContext.current
             val navController: NavHostController = rememberNavController()
             val noteEntities by noteViewModel.allNotes.collectAsState(initial = emptyList())
             val globalNotes = noteEntities.map { entity ->
@@ -242,7 +245,7 @@ class MainActivity : ComponentActivity() {
                             globalNotes = globalNotes,
                             onDeleteNote = { noteToDelete ->
                                 // Kita panggil fungsi delete dari noteViewModel
-                                noteViewModel.deleteNote(noteToDelete)
+                                noteViewModel.deleteNote(context, noteToDelete)
                             }
                         )
                     }
@@ -262,7 +265,7 @@ class MainActivity : ComponentActivity() {
                             noteId = noteId, // Kirim ID ke editor
                             globalNotes = globalNotes // Kirim list besar ke editor buat dicari datanya
                         ) { newNote ->
-                            noteViewModel.saveNote(newNote)
+                            noteViewModel.saveNote(context,newNote)
                         }
                     }
 

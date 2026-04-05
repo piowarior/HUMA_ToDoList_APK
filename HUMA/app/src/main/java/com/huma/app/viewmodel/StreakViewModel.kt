@@ -50,7 +50,6 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         viewModelScope.launch {
             val data = dao.getStreak().firstOrNull() ?: return@launch
 
-            // --- FIX: FIRST RUN GUARD ---
             if (data.lastLoginMillis == 0L && data.currentStreak == 0) {
                 return@launch
             }
@@ -60,10 +59,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
             when {
                 diffDays == 0 -> {
-                    // Jika hari baru tapi flag masih true → reset
-                    if (data.isIgnitedToday) {
-                        dao.upsertStreak(data.copy(isIgnitedToday = false))
-                    }
+                    // ✅ HARI SAMA → JANGAN UBAH APA APA
                     return@launch
                 }
 
@@ -79,18 +75,22 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
                         )
                         restoreCounter = 0
                     } else {
-                        dao.upsertStreak(data.copy(isIgnitedToday = false))
+                        dao.upsertStreak(
+                            data.copy(
+                                isIgnitedToday = false
+                            )
+                        )
                         restoreCounter = counter
                     }
                 }
 
                 diffDays == 2 -> {
-                    // 🔥 bolong 1 hari → selalu popup pilihan
+                    // bolong 1 hari
                     isAwakeningActive = true
                 }
 
                 diffDays >= 3 -> {
-                    // 🔴 bolong ≥ 2 hari → mati total
+                    // mati total
                     isDeadPopup = true
                 }
             }

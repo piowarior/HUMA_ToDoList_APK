@@ -4,10 +4,12 @@ import androidx.room.TypeConverter
 import com.google.gson.*
 import com.huma.app.ui.screen.note.NoteBlock
 import com.huma.app.ui.screen.note.CheckItem
+import androidx.compose.runtime.toMutableStateList
 
 class NoteConverters {
     private val gson = GsonBuilder().create()
 
+    // Serialize
     @TypeConverter
     fun fromNoteBlockList(blocks: List<NoteBlock>): String {
         val array = JsonArray()
@@ -24,11 +26,11 @@ class NoteConverters {
                 }
                 is NoteBlock.BulletList -> {
                     obj.addProperty("type", "bullet")
-                    obj.add("items", gson.toJsonTree(block.items))
+                    obj.add("items", gson.toJsonTree(block.items.toList())) // <- pakai toList()
                 }
                 is NoteBlock.CheckboxGroup -> {
                     obj.addProperty("type", "check")
-                    obj.add("items", gson.toJsonTree(block.items))
+                    obj.add("items", gson.toJsonTree(block.items.map { CheckItemData(it) })) // <- pakai DTO
                 }
             }
             array.add(obj)
@@ -36,6 +38,7 @@ class NoteConverters {
         return array.toString()
     }
 
+    // Deserialize
     @TypeConverter
     fun toNoteBlockList(data: String): List<NoteBlock> {
         val list = mutableListOf<NoteBlock>()
@@ -47,15 +50,30 @@ class NoteConverters {
                 "text" -> list.add(NoteBlock.Text(obj.get("content").asString))
                 "heading" -> list.add(NoteBlock.Heading(obj.get("content").asString))
                 "bullet" -> {
-                    val items: MutableList<String> = gson.fromJson(obj.get("items"), object : com.google.gson.reflect.TypeToken<MutableList<String>>() {}.type)
-                    list.add(NoteBlock.BulletList(items))
+                    val items: MutableList<String> = gson.fromJson(
+                        obj.get("items"),
+                        object : com.google.gson.reflect.TypeToken<MutableList<String>>() {}.type
+                    )
+                    list.add(NoteBlock.BulletList(items.toMutableStateList()))
                 }
                 "check" -> {
-                    val items: MutableList<CheckItem> = gson.fromJson(obj.get("items"), object : com.google.gson.reflect.TypeToken<MutableList<CheckItem>>() {}.type)
-                    list.add(NoteBlock.CheckboxGroup(items))
+                    val items: List<CheckItemData> = gson.fromJson(
+                        obj.get("items"),
+                        object : com.google.gson.reflect.TypeToken<List<CheckItemData>>() {}.type
+                    )
+                    list.add(NoteBlock.CheckboxGroup(items.map { it.toCheckItem() }.toMutableStateList()))
                 }
             }
         }
         return list
+    }
+
+    // --- DTO untuk CheckItem ---
+    data class CheckItemData(
+        val text: String = "",
+        val isChecked: Boolean = false
+    ) {
+        constructor(item: CheckItem) : this(item.text, item.isChecked)
+        fun toCheckItem() = CheckItem(text = text, isChecked = isChecked)
     }
 }

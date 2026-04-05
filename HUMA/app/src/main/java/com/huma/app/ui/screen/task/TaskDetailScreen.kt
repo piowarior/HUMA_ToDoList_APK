@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.huma.app.data.local.TaskMood
 import com.huma.app.data.local.TaskPriority
 import com.huma.app.ui.viewmodel.TaskViewModel
+import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,6 +35,7 @@ fun TaskDetailScreen(
     taskId: Int,
     viewModel: TaskViewModel
 ) {
+    val context = LocalContext.current
     // Collect state dari Flow
     val task by viewModel.getTaskById(taskId).collectAsState(initial = null)
 
@@ -212,7 +214,7 @@ fun TaskDetailScreen(
                 ) {
                     Checkbox(
                         checked = task!!.isDone,
-                        onCheckedChange = { viewModel.toggleTaskCompletion(task!!) },
+                        onCheckedChange = { viewModel.toggleTaskCompletion(context,task!!) },
                         colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50))
                     )
                     Spacer(Modifier.width(8.dp))
@@ -240,7 +242,7 @@ fun TaskDetailScreen(
                 TextButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
-                        viewModel.deleteTask(task!!)
+                        viewModel.deleteTask(context,task!!)
                         navController.popBackStack()
                     }
                 ) {

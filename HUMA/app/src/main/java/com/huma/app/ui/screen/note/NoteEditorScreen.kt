@@ -31,7 +31,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
+import com.huma.app.ui.widget.WidgetUpdater
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.mutableStateListOf
 import java.util.UUID
 import java.text.SimpleDateFormat
 import java.util.*
@@ -63,15 +67,23 @@ sealed class NoteBlock(val id: String = UUID.randomUUID().toString()) {
     class Heading(initialContent: String = "") : NoteBlock() {
         var content by mutableStateOf(initialContent)
     }
-    class BulletList(val items: MutableList<String> = mutableStateListOf("")) : NoteBlock()
-    class CheckboxGroup(val items: MutableList<CheckItem> = mutableStateListOf(CheckItem())) : NoteBlock()
+    class BulletList(
+        val items: SnapshotStateList<String> = mutableStateListOf("")
+    ) : NoteBlock()
+
+    class CheckboxGroup(
+        val items: SnapshotStateList<CheckItem> = mutableStateListOf(CheckItem())
+    ) : NoteBlock()
 }
 
-data class CheckItem(
+class CheckItem(
     val id: String = UUID.randomUUID().toString(),
-    var text: String = "",
-    var isChecked: Boolean = false
-)
+    text: String = "",
+    isChecked: Boolean = false
+) {
+    var text by mutableStateOf(text)
+    var isChecked by mutableStateOf(isChecked)
+}
 
 // --- SCREEN ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,9 +95,11 @@ fun NoteEditorScreen(
     onSave: (NoteData) -> Unit
 ) {
     val blocks = remember { mutableStateListOf<NoteBlock>() }
+    val context = LocalContext.current
     var noteTitle by remember { mutableStateOf("") }
     var activeBlockId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+
 
     // State untuk kontrol opsi di baris terakhir
     var showInitialOptions by remember { mutableStateOf(false) }
@@ -102,15 +116,35 @@ fun NoteEditorScreen(
     }
 
     val handleSaveAndExit = {
-        if (noteTitle.isNotEmpty() || blocks.isNotEmpty()) {
+        // 1. Hapus semua block kosong
+        val cleanedBlocks = blocks.filter { block ->
+            when(block) {
+                is NoteBlock.Text -> block.content.isNotBlank()
+                is NoteBlock.Heading -> block.content.isNotBlank()
+                is NoteBlock.BulletList -> block.items.any { it.isNotBlank() }
+                is NoteBlock.CheckboxGroup -> block.items.any { it.text.isNotBlank() }
+            }
+        }
+
+        if (noteTitle.isNotBlank() || cleanedBlocks.isNotEmpty()) {
             val currentDate = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
             val newNote = NoteData(
                 id = noteId ?: UUID.randomUUID().toString(),
-                title = if (noteTitle.isEmpty()) "Untitled" else noteTitle,
-                blocks = blocks.toList(),
+                title = noteTitle.ifBlank { "Untitled" },
+                blocks = cleanedBlocks.map { block ->
+                    // Buat snapshot final untuk setiap block agar tidak mutable
+                    when(block) {
+                        is NoteBlock.Text -> NoteBlock.Text(block.content)
+                        is NoteBlock.Heading -> NoteBlock.Heading(block.content)
+                        is NoteBlock.BulletList -> NoteBlock.BulletList(block.items.toMutableStateList())
+                        is NoteBlock.CheckboxGroup -> NoteBlock.CheckboxGroup(block.items.toMutableStateList())
+                        else -> block
+                    }
+                },
                 date = currentDate
             )
             onSave(newNote)
+            WidgetUpdater.updateNoteWidget(context)
         }
         navController.popBackStack()
     }
@@ -280,11 +314,18 @@ fun CheckboxCellGroup(block: NoteBlock.CheckboxGroup, isActive: Boolean, onRemov
         block.items.forEachIndexed { index, item ->
             val focusRequester = remember { FocusRequester() }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = item.isChecked, onCheckedChange = { block.items[index] = item.copy(isChecked = it) })
+                Checkbox(
+                    checked = item.isChecked,
+                    onCheckedChange = {
+                        item.isChecked = it
+                    }
+                )
                 if (isActive) {
                     BasicTextField(
                         value = item.text,
-                        onValueChange = { block.items[index] = item.copy(text = it) },
+                        onValueChange = {
+                            item.text = it
+                        },
                         modifier = Modifier.weight(1f).focusRequester(focusRequester),
                         textStyle = TextStyle(fontSize = 16.sp, textDecoration = if (item.isChecked) TextDecoration.LineThrough else null, color = if (item.isChecked) Color.Gray else Color.Black),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
