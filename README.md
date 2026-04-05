@@ -185,7 +185,7 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
 
 ### 📱 Dashboard
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8b17952c-012c-45e6-a73a-cefdcb617b08" width="250">
+  <img src="https://github.com/user-attachments/assets/543e9351-2ff6-4802-8bba-8ba7ef7dd17f" width="250">
 </p>
 
 ### ✅ Task Management (Add & Preview)
@@ -194,6 +194,20 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
   <img src="https://github.com/user-attachments/assets/6e85bca3-e8a3-421d-8afd-e23fece60690" width="250" alt="Preview Task">
   <img src="https://github.com/user-attachments/assets/d8d07be1-3c59-4053-a73a-ec84c649be14" width="250" alt="Task on Dashboard">
 </p>
+
+### 🔥 Daily Comitment
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/808a6519-62d3-4d43-b84b-860ead8e2057" width="250">
+  <img src="https://github.com/user-attachments/assets/f4e7335c-82d9-43ba-a13f-c24de0e2f12a" width="250">
+</p>
+
+### 📊 Feature
+<p align="center">
+ <img src="https://github.com/user-attachments/assets/61be3cf6-c380-49b7-99b3-836b2f5b8a9d" width="250">
+ <img src="https://github.com/user-attachments/assets/ca39afe5-14dc-4f18-9e1c-77928430b87c" width="250">
+ <img src="https://github.com/user-attachments/assets/d07c35f1-f56e-4346-9f5e-07bdb584b5c3" width="250">
+</p>
+
 
 ### 🎯 Focus Mode
 <p align="center">
