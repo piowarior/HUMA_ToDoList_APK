@@ -31,8 +31,8 @@ fun TimeCapsuleCard(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            Color(0xFF434343),
-                            Color(0xFF000000)
+                            Color(0xFF6C63FF),
+                            Color(0xFF9D8CFF)
                         )
                     )
                 )

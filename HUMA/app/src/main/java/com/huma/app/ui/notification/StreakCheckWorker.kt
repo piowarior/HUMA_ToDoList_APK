@@ -11,16 +11,41 @@ import kotlinx.coroutines.flow.firstOrNull
 class StreakCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val db = AppDatabase.getInstance(applicationContext)
-        val data = db.streakDao().getStreak().firstOrNull() ?: return Result.success()
+        val streakData = db.streakDao().getStreak().firstOrNull() ?: return Result.success()
+        
+        // Jika belum pernah ada streak (lastDayId = 0), tidak perlu cek kelewatan
+        if (streakData.lastDayId == 0L) return Result.success()
+        
+        // Jika hari ini sudah dinyalakan, tidak perlu cek kelewatan
+        if (streakData.isIgnitedToday) return Result.success()
+
         val today = getTodayDayId()
-        val diff = (today - data.lastDayId).toInt()
+        val diff = (today - streakData.lastDayId).toInt()
 
         when {
-            // diff == 2 artinya kemarin (diff 1) terlewat total.
-            diff == 2 -> notify("Streak Terhenti! 🚨", "Kamu melewatkan ritual kemarin. Ayo selamatkan hari ini!", "#F44336")
-            diff == 6 -> notify("Sudah 5 Hari... 🛑", "Streak kamu dalam bahaya besar. Kembalilah sebelum padam total!", "#D32F2F")
+            // Lewat 1 hari (Hari ke-2 tidak streak)
+            diff == 2 -> {
+                notify(
+                    "Masih Ada Kesempatan! 🕯️",
+                    "Streak kamu hampir terputus. Ayo login kembali dan nyalakan apimu sekarang!",
+                    "#FF9800" // Orange
+                )
+            }
+            // Lewat 2 hari (Hari ke-3 tidak streak)
+            diff == 3 -> {
+                notify(
+                    "Api Telah Padam... 🌑",
+                    "Sayang sekali, api kamu sudah padam sepenuhnya. Kamu kembali ke awal, tapi jangan menyerah! Ayo mulai lagi.",
+                    "#F44336" // Red
+                )
+            }
+            // Lewat seminggu (Hari ke-8) dan setiap minggu berikutnya
             diff >= 8 && (diff - 1) % 7 == 0 -> {
-                notify("Streak Tertidur Pulas 💤", "Sudah seminggu lebih kamu tidak aktif. Kami menunggumu kembali.", "#B71C1C")
+                notify(
+                    "Apimu Merindukanmu ❄️",
+                    "Sudah beberapa hari terlewatkan... Bagaimana kabar apimu? HUMA menunggumu kembali aktif.",
+                    "#B71C1C" // Deep Red
+                )
             }
         }
         return Result.success()

@@ -2,24 +2,24 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="64dp"
-    android:padding="8.dp"
+    android:padding="8dp"
     android:background="#121212">
 
     <ImageView
         android:id="@+id/img_logo"
-        android:layout_width="48.dp"
-        android:layout_height="48.dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_centerVertical="true"
-        android:padding="8.dp"
-        android:src="@drawable/ic_launcher_foreground"
-        android:background="@android:color/darker_gray" />
+        android:padding="4dp"
+        android:src="@drawable/logohumaicon"
+        android:background="@android:color/transparent" />
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_toEndOf="@id/img_logo"
         android:layout_centerVertical="true"
-        android:layout_marginStart="12.dp"
+        android:layout_marginStart="12dp"
         android:orientation="vertical">
 
         <TextView
@@ -57,7 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
-        android:layout_marginEnd="8.dp"
+        android:layout_marginEnd="8dp"
         android:text="25:00"
         android:textColor="#FFFFFF"
         android:textSize="24sp"

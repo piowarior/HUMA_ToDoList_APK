@@ -3,27 +3,37 @@ package com.huma.app.ui.screen.task
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Mood
+import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.huma.app.data.local.TaskMood
 import com.huma.app.data.local.TaskPriority
+import com.huma.app.ui.components.task.moodEmoji
+import com.huma.app.ui.components.task.moodLabel
+import com.huma.app.ui.components.task.priorityColor
 import com.huma.app.ui.viewmodel.TaskViewModel
-import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -36,10 +46,8 @@ fun TaskDetailScreen(
     viewModel: TaskViewModel
 ) {
     val context = LocalContext.current
-    // Collect state dari Flow
     val task by viewModel.getTaskById(taskId).collectAsState(initial = null)
 
-    // Loading state jika task belum ketemu
     if (task == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Color(0xFF6C63FF))
@@ -47,273 +55,190 @@ fun TaskDetailScreen(
         return
     }
 
-    // Format tanggal
-    val dateText = remember(task) {
+    val dateFull = remember(task) {
         SimpleDateFormat("EEEE, dd MMMM yyyy", Locale.getDefault()).format(Date(task!!.startDate))
     }
 
     Scaffold(
-        containerColor = Color(0xFFF8F9FE),
+        containerColor = Color(0xFFF8F9FF),
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Task Detail",
-                        fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
+                title = { Text("Task Details", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, null)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                actions = {
+                    IconButton(onClick = { navController.navigate("edit_task/${task!!.id}") }) {
+                        Icon(Icons.Default.Edit, null, tint = Color(0xFF6C63FF))
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White)
             )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(horizontal = 20.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()), // Agar bisa di-scroll
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            /* ================= TITLE CARD ================= */
+            // TITLE & DESC CARD (Matches Edit Screen Style)
             Card(
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF6C63FF)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(Modifier.padding(24.dp)) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(8.dp)
+                        color = Color(0xFF6C63FF).copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = task!!.lifeArea,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            text = task!!.lifeArea.uppercase(),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
+                            color = Color(0xFF6C63FF),
                             fontWeight = FontWeight.Bold
                         )
                     }
-
-                    Spacer(Modifier.height(12.dp))
-
+                    
                     Text(
                         text = task!!.title,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        lineHeight = 34.sp
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1A1C1E)
                     )
-
-                    Spacer(Modifier.height(16.dp))
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.2f), thickness = 1.dp)
-                    Spacer(Modifier.height(16.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.8f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = dateText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-
-                    task!!.dueDate?.let {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "⏰ Due at $it",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-
-            /* ================= INFO ROW ================= */
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                InfoChip(
-                    title = "Priority",
-                    value = task!!.priority.name,
-                    color = priorityColor(task!!.priority),
-                    icon = "🔥",
-                    modifier = Modifier.weight(1f)
-                )
-
-                InfoChip(
-                    title = "Mood Status",
-                    value = moodLabel(task!!.mood),
-                    color = moodColor(task!!.mood),
-                    icon = "🎭",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            /* ================= DESCRIPTION ================= */
-            if (!task!!.description.isNullOrBlank()) {
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(Modifier.padding(20.dp).fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(4.dp, 16.dp).background(Color(0xFF6C63FF), RoundedCornerShape(2.dp))
-                            )
-                            Spacer(Modifier.width(8.dp))
+                    
+                    if (!task!!.description.isNullOrBlank()) {
+                        Divider(color = Color(0xFFF0F0F0))
+                        Row(verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.Notes, null, tint = Color.Gray, modifier = Modifier.size(18.dp).padding(top = 2.dp))
+                            Spacer(Modifier.width(12.dp))
                             Text(
-                                "Description",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Color.DarkGray
+                                text = task!!.description!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color(0xFF454749),
+                                lineHeight = 24.sp
                             )
                         }
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            text = task!!.description!!,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray,
-                            lineHeight = 24.sp
-                        )
                     }
                 }
             }
 
-            /* ================= DONE CHECKBOX ================= */
-            Surface(
+            // DATE & TIME CARD (Matches Edit Screen Style)
+            Card(
                 shape = RoundedCornerShape(24.dp),
-                color = if (task!!.isDone) Color(0xFFE8F5E9) else Color.White,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (task!!.isDone) Color(0xFF4CAF50).copy(alpha = 0.5f) else Color.Transparent
-                ),
-                shadowElevation = 2.dp
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CalendarMonth, null, tint = Color(0xFF6C63FF))
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text("Target Date", fontSize = 12.sp, color = Color.Gray)
+                            Text(dateFull, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    if (task!!.dueDate != null) {
+                        Divider(color = Color(0xFFF0F0F0))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Schedule, null, tint = Color(0xFF6C63FF))
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("Scheduled Time", fontSize = 12.sp, color = Color.Gray)
+                                Text(task!!.dueDate!!, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // PRIORITY & MOOD CARD (Matches Edit Screen Style)
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Flag, null, tint = priorityColor(task!!.priority), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Priority", fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Text(task!!.priority.name, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp))
+                    }
+                    
+                    Divider(modifier = Modifier.height(40.dp).width(1.dp), color = Color(0xFFF0F0F0))
+                    
+                    Column(Modifier.weight(1f).padding(start = 20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Mood, null, tint = Color(0xFF6C63FF), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Mood", fontSize = 12.sp, color = Color.Gray)
+                        }
+                        Text("${moodEmoji(task!!.mood)} ${moodLabel(task!!.mood)}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 24.dp))
+                    }
+                }
+            }
+
+            // COMPLETION STATUS (Interactive)
+            val statusColor = if (task!!.isDone) Color(0xFF4CAF50) else Color(0xFF6C63FF)
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = statusColor.copy(alpha = 0.1f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier.clickable { viewModel.toggleTaskCompletion(context, task!!) }
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = task!!.isDone,
-                        onCheckedChange = { viewModel.toggleTaskCompletion(context,task!!) },
+                        onCheckedChange = { viewModel.toggleTaskCompletion(context, task!!) },
                         colors = CheckboxDefaults.colors(checkedColor = Color(0xFF4CAF50))
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (task!!.isDone) "Task Completed 🎉" else "Mark task as completed",
-                        fontWeight = FontWeight.Bold,
-                        color = if (task!!.isDone) Color(0xFF2E7D32) else Color.DarkGray
-                    )
-                }
-            }
-
-            /* ================= ACTIONS ================= */
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1C1E)),
-                    onClick = { navController.navigate("edit_task/${task!!.id}") }
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit Task Details", fontWeight = FontWeight.Bold)
-                }
-
-                TextButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        viewModel.deleteTask(context,task!!)
-                        navController.popBackStack()
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = if (task!!.isDone) "Task Completed! ✨" else "Ongoing Progress",
+                            fontWeight = FontWeight.Bold,
+                            color = if (task!!.isDone) Color(0xFF2E7D32) else Color(0xFF1A1C1E)
+                        )
+                        Text(
+                            text = if (task!!.isDone) "Tap to reactive task" else "Tap to mark as finished",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
                     }
-                ) {
-                    Text(
-                        "Delete Task",
-                        color = Color(0xFFE53935),
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
             }
-            Spacer(Modifier.height(24.dp))
-        }
-    }
-}
 
-@Composable
-private fun InfoChip(
-    title: String,
-    value: String,
-    color: Color,
-    icon: String,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = Color.White,
-        shadowElevation = 2.dp
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 16.sp)
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    value,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = color,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            // DELETE ACTION
+            TextButton(
+                onClick = {
+                    viewModel.deleteTask(context, task!!)
+                    navController.popBackStack()
+                },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFE53935))
+            ) {
+                Icon(Icons.Default.DeleteOutline, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Delete task permanent", fontWeight = FontWeight.Medium)
             }
+            
+            Spacer(Modifier.height(30.dp))
         }
     }
 }
-
-fun priorityColor(priority: TaskPriority): Color =
-    when (priority) {
-        TaskPriority.HIGH -> Color(0xFFE53935)
-        TaskPriority.MEDIUM -> Color(0xFFFFA726)
-        TaskPriority.LOW -> Color(0xFF43A047)
-    }
-
-fun moodColor(mood: TaskMood): Color =
-    when (mood) {
-        TaskMood.CALM -> Color(0xFF42A5F5)
-        TaskMood.NORMAL -> Color(0xFF7E57C2)
-        TaskMood.STRESS -> Color(0xFFEF5350)
-    }
-
-fun moodLabel(mood: TaskMood): String =
-    when (mood) {
-        TaskMood.CALM -> "Calm 😌"
-        TaskMood.NORMAL -> "Normal 🙂"
-        TaskMood.STRESS -> "Stress 😵"
-    }

@@ -32,7 +32,7 @@ fun MindGymCard(
                     Brush.linearGradient(
                         listOf(
                             Color(0xFF6C63FF),
-                            Color(0xFF3F3D56)
+                            Color(0xFF9D8CFF)
                         )
                     )
                 )

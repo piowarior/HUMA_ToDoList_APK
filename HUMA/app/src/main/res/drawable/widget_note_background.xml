@@ -1,10 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#E7D8FF"/>
-    <corners android:radius="18dp"/>
-    <padding
-        android:left="8dp"
-        android:right="8dp"
-        android:top="8dp"
-        android:bottom="8dp"/>
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background Utama: Ungu Muda / Lavender -->
+    <item>
+        <shape>
+            <solid android:color="#F1EBFF"/>
+            <corners android:radius="24dp"/>
+        </shape>
+    </item>
+
+    <!-- Lingkaran Kecil (Oval) -->
+    <item android:top="15dp" android:left="20dp" android:width="12dp" android:height="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#206C63FF"/>
+        </shape>
+    </item>
+
+    <!-- Kotak Kecil (Square) -->
+    <item android:bottom="20dp" android:right="25dp" android:width="10dp" android:height="10dp">
+        <shape>
+            <solid android:color="#206C63FF"/>
+        </shape>
+    </item>
+
+    <!-- Tanda Plus (+) Bagian 1 -->
+    <item android:top="40dp" android:right="15dp" android:width="12dp" android:height="2dp">
+        <shape><solid android:color="#256C63FF"/></shape>
+    </item>
+    <!-- Tanda Plus (+) Bagian 2 -->
+    <item android:top="35dp" android:right="20dp" android:width="2dp" android:height="12dp">
+        <shape><solid android:color="#256C63FF"/></shape>
+    </item>
+
+    <!-- Tanda Minus (-) -->
+    <item android:bottom="40dp" android:left="15dp" android:width="10dp" android:height="2dp">
+        <shape><solid android:color="#206C63FF"/></shape>
+    </item>
+
+    <!-- Tanda X (Silang) - Pakai rotasi -->
+    <item android:top="20dp" android:right="50dp">
+        <rotate android:fromDegrees="45" android:pivotX="50%" android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <size android:width="12dp" android:height="2dp"/>
+                <solid android:color="#156C63FF"/>
+            </shape>
+        </rotate>
+    </item>
+    <item android:top="20dp" android:right="50dp">
+        <rotate android:fromDegrees="-45" android:pivotX="50%" android:pivotY="50%">
+            <shape android:shape="rectangle">
+                <size android:width="12dp" android:height="2dp"/>
+                <solid android:color="#156C63FF"/>
+            </shape>
+        </rotate>
+    </item>
+
+    <!-- Lingkaran Lain di sisi lain -->
+    <item android:bottom="50dp" android:right="15dp" android:width="8dp" android:height="8dp">
+        <shape android:shape="oval">
+            <solid android:color="#156C63FF"/>
+        </shape>
+    </item>
+
+    <!-- Border Halus -->
+    <item>
+        <shape>
+            <stroke android:width="1.2dp" android:color="#256C63FF"/>
+            <corners android:radius="24dp"/>
+        </shape>
+    </item>
+</layer-list>

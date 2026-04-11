@@ -10,14 +10,10 @@ import android.os.IBinder
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.huma.app.R
-// Pastikan import MainActivity kamu benar untuk membuka aplikasi
-// import com.huma.app.MainActivity
 
 const val ACTION_PAUSE = "com.huma.app.ACTION_PAUSE"
 const val ACTION_RESUME = "com.huma.app.ACTION_RESUME"
-
 const val ACTION_STOP = "com.huma.app.ACTION_STOP"
-
 
 class FocusService : Service() {
 
@@ -26,8 +22,6 @@ class FocusService : Service() {
     private var method = ""
     private var phase = ""
     private var timeLeft = ""
-
-    // ... di dalam FocusService.kt ...
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
@@ -40,25 +34,24 @@ class FocusService : Service() {
                     return START_NOT_STICKY
                 }
                 else -> {
-                    // Ambil data pertama kali
                     taskTitle = it.getStringExtra("task") ?: "Fokus"
                     method = it.getStringExtra("method") ?: "Pomodoro"
                     phase = it.getStringExtra("phase") ?: "Focus"
                     timeLeft = it.getStringExtra("time") ?: "25:00"
 
-                    // Jika ada extra is_paused dari timer
                     if (it.hasExtra("is_paused")) {
                         paused = it.getBooleanExtra("is_paused", false)
                     } else {
-                        // Hanya munculkan alert melayang SAAT PERTAMA KALI MULAI
                         notifyFocusStarted()
                     }
                 }
             }
 
-            // Update waktu yang dikirim dari UI
             val timeUpdate = it.getStringExtra("time")
             if (timeUpdate != null) timeLeft = timeUpdate
+
+            val phaseUpdate = it.getStringExtra("phase")
+            if (phaseUpdate != null) phase = phaseUpdate
 
             startForeground(FOCUS_NOTIFICATION_ID, buildNotification())
         }
@@ -87,16 +80,15 @@ class FocusService : Service() {
         )
 
         return NotificationCompat.Builder(this, FOCUS_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.logohumaicon) // Menggunakan logo huma
             .setCustomContentView(remoteViews)
             .setCustomBigContentView(remoteViews)
-            // INI KUNCINYA: Memaksa Android menampilkan tombol action di bawah layout custom
             .setStyle(androidx.core.app.NotificationCompat.DecoratedCustomViewStyle())
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(
-                R.drawable.ic_launcher_foreground, // Kamu bisa ganti dengan icon play/pause
+                R.drawable.ic_launcher_foreground,
                 if (paused) "Resume" else "Pause",
                 focusActionPending(if (paused) ACTION_RESUME else ACTION_PAUSE)
             )
@@ -111,9 +103,8 @@ class FocusService : Service() {
     private fun notifyFocusStarted() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Menggunakan "task_channel" sesuai kode HUMA Reminder kamu
         val alertNotification = NotificationCompat.Builder(this, "task_channel")
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // Gunakan logo kecil kamu
+            .setSmallIcon(R.drawable.logohumaicon) // Menggunakan logo huma
             .setContentTitle("HUMA Focus Started")
             .setContentText("Target: $taskTitle")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

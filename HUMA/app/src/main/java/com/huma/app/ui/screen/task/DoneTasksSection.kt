@@ -16,8 +16,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.huma.app.data.local.TaskEntity
 import com.huma.app.ui.components.task.moodEmoji
+import com.huma.app.ui.components.task.moodLabel
+import com.huma.app.ui.components.task.priorityColor
 import java.text.SimpleDateFormat
 import java.util.*
+
 @Composable
 fun DoneTasksSection(
     groupedTasks: Map<String, List<TaskEntity>>,
