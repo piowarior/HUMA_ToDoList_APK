@@ -11,8 +11,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as itemsGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -392,15 +394,22 @@ fun CommitmentDetailView(commitment: CommitmentEntity, onDismiss: () -> Unit, on
     val isDoneToday = commitment.completedDays.contains(todayStr)
     val color = Color(android.graphics.Color.parseColor(commitment.colorHex))
     val isBroken = isStreakBroken(commitment)
+    val scrollState = rememberScrollState()
     
     val todayCal = Calendar.getInstance()
     val isScheduledToday = if (commitment.isCustomSchedule) commitment.scheduledDays.contains(todayCal.get(Calendar.DAY_OF_WEEK)) else true
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp, start = 24.dp, end = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState) // 🔥 Fix: Add scroll support
+                .padding(bottom = 32.dp, start = 24.dp, end = 24.dp), 
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             DynamicIcon(commitment.iconType, if (isBroken) Color.Gray else color, Modifier.size(100.dp))
             Spacer(Modifier.height(16.dp))
-            Text(commitment.title, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Text(commitment.title, fontSize = 28.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
             Text(commitment.description, color = Color.Gray, textAlign = TextAlign.Center, fontSize = 14.sp)
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
