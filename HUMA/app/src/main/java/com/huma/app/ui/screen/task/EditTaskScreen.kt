@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.huma.app.data.local.LifeArea
 import com.huma.app.data.local.TaskMood
 import com.huma.app.data.local.TaskPriority
 import com.huma.app.ui.viewmodel.TaskViewModel
@@ -53,7 +54,6 @@ fun EditTaskScreen(
 
     /* ================= INITIAL STATE LOGIC ================= */
     
-    // Parse existing time if available (e.g., "08:00 - 09:00" or "08:00")
     val existingTime = task!!.dueDate ?: ""
     val timeParts = existingTime.split(" - ")
     
@@ -67,8 +67,8 @@ fun EditTaskScreen(
     var priority by remember { mutableStateOf(task!!.priority) }
     var mood by remember { mutableStateOf(task!!.mood) }
     var selectedDate by remember { mutableStateOf(task!!.startDate) }
+    var selectedArea by remember { mutableStateOf(LifeArea.values().find { it.name == task!!.lifeArea } ?: LifeArea.PRIBADI) }
 
-    // Fix Bug: Hanya centang yang benar-benar ada datanya
     var useStartTime by remember { mutableStateOf(existingTime.isNotEmpty()) }
     var useEndTime by remember { mutableStateOf(timeParts.size > 1) }
 
@@ -78,6 +78,82 @@ fun EditTaskScreen(
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
     var showConfirmExit by remember { mutableStateOf(false) }
+
+    // Smart Detect Logic with Typo Correction
+    LaunchedEffect(title) {
+        val input = title.trim().lowercase()
+        if (input.isBlank()) return@LaunchedEffect
+
+        val keywordsMap = mapOf(
+            LifeArea.AKADEMIK to listOf(
+                "belajar", "tugas", "kuliah", "kerja", "meeting", "rapat", "proyek", "project", "skripsi", "coding", 
+                "ujian", "quiz", "laporan", "magang", "bisnis", "kantor", "presentasi", "buku", "lab", "praktikum",
+                "sempro", "sidang", "praktek", "office", "work", "study", "exam", "assignment", "deadline", "course",
+                "lecture", "univ", "sekolah", "pr", "homework", "training", "workshop", "seminar", "riset", "research"
+            ),
+            LifeArea.KESEHATAN to listOf(
+                "lari", "gym", "workout", "olahraga", "sehat", "obat", "vitamin", "sakit", "dokter", "diet", "puasa", 
+                "tidur", "yoga", "renang", "sepeda", "health", "fitness", "bola", "basket", "badminton", "medis", "checkup",
+                "vaksing", "klinik", "rs", "rumah sakit", "apotek", "suplemen", "istirahat", "rest", "sport", "futsal",
+                "tenis", "voli", "karate", "pencak silat", "jalan santai", "jogging", "marathon", "kalori", "protein"
+            ),
+            LifeArea.SPIRITUAL to listOf(
+                "sholat", "doa", "ibadah", "ngaji", "meditasi", "dzikir", "yasinan", "kajian", "gereja", "alkitab", 
+                "quran", "sedekah", "pray", "religious", "tahajud", "dhuha", "maghrib", "isya", "subuh", "zuhur", "ashar",
+                "puasa", "ramadhan", "misa", "kebaktian", "vihara", "pura", "sholawat", "taubat", "tasbih", "tahlil",
+                "zakat", "infaq", "wakaf", "haji", "umroh", "ustad", "pastur", "pendeta", "bhikkhu"
+            ),
+            LifeArea.RUMAH_TANGGA to listOf(
+                "sapu", "pel", "masak", "cuci", "piring", "baju", "belanja", "listrik", "beres", "kebun", "sampah",
+                "bersih", "home", "house", "cleaning", "masak", "dapur", "pasar", "supermarket", "furniture", "rusak",
+                "perbaiki", "service", "ac", "genteng", "cat", "lampu", "keran", "taman", "siram", "bunga", "tanaman",
+                "makan", "sarapan", "lunch", "dinner", "jemur", "setrika", "folding", "debu"
+            ),
+            LifeArea.SOSIAL to listOf(
+                "nongkrong", "kencan", "date", "ketemu", "main", "futsal", "nobar", "silaturahmi", "reuni", "chat", 
+                "telpon", "pesta", "social", "party", "hangout", "dinner", "makan bareng", "teman", "pacar", "keluarga",
+                "family", "friends", "visit", "kunjung", "ngopi", "kafe", "mall", "bioskop", "film", "telp", "wa",
+                "video call", "vc", "kumpul", "arisan", "wedding", "nikahan", "kondangan", "ulang tahun", "ultah"
+            )
+        )
+
+        fun levenshteinDistance(s1: String, s2: String): Int {
+            val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
+            for (i in 0..s1.length) dp[i][0] = i
+            for (j in 0..s2.length) dp[0][j] = j
+            for (i in 1..s1.length) {
+                for (j in 1..s2.length) {
+                    val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                    dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+                }
+            }
+            return dp[s1.length][s2.length]
+        }
+
+        val inputWords = input.split(Regex("[^a-zA-Z0-9]+")).filter { it.isNotBlank() }
+        var bestMatchArea: LifeArea? = null
+        var minDistance = 3
+
+        for (word in inputWords) {
+            for (entry in keywordsMap) {
+                for (keyword in entry.value) {
+                    if (word == keyword) {
+                        bestMatchArea = entry.key
+                        minDistance = 0
+                        break
+                    }
+                    val dist = levenshteinDistance(word, keyword)
+                    if (dist < minDistance) {
+                        minDistance = dist
+                        bestMatchArea = entry.key
+                    }
+                }
+                if (minDistance == 0) break
+            }
+            if (minDistance == 0) break
+        }
+        if (bestMatchArea != null) selectedArea = bestMatchArea
+    }
 
     val currentTimeText = remember(useStartTime, useEndTime, startPickerState.hour, startPickerState.minute, endPickerState.hour, endPickerState.minute) {
         when {
@@ -92,7 +168,8 @@ fun EditTaskScreen(
                      priority != task!!.priority || 
                      mood != task!!.mood || 
                      selectedDate != task!!.startDate || 
-                     currentTimeText != task!!.dueDate
+                     currentTimeText != task!!.dueDate ||
+                     selectedArea.name != task!!.lifeArea
 
     BackHandler {
         if (hasChanges) showConfirmExit = true else navController.popBackStack()
@@ -120,7 +197,7 @@ fun EditTaskScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // JUDUL & DESKRIPSI CARD
+            // TITLE & DESC CARD
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -142,6 +219,19 @@ fun EditTaskScreen(
                         minLines = 3,
                         shape = RoundedCornerShape(12.dp)
                     )
+                    
+                    // Smart Detect Info
+                    Surface(
+                        color = selectedArea.color.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(selectedArea.icon, null, tint = selectedArea.color, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Area: ${selectedArea.label}", color = selectedArea.color, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
 
@@ -152,7 +242,6 @@ fun EditTaskScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Date Picker
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.CalendarMonth, null, tint = Color(0xFF6C63FF))
                         Spacer(Modifier.width(12.dp))
@@ -171,7 +260,6 @@ fun EditTaskScreen(
 
                     Divider(color = Color(0xFFF0F0F0))
 
-                    // Start Time
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Schedule, null, tint = Color(0xFF6C63FF))
                         Spacer(Modifier.width(12.dp))
@@ -180,16 +268,11 @@ fun EditTaskScreen(
                         Checkbox(checked = useStartTime, onCheckedChange = { useStartTime = it })
                     }
                     if (useStartTime) {
-                        OutlinedButton(
-                            onClick = { showStartPicker = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
+                        OutlinedButton(onClick = { showStartPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                             Text("Set Start: %02d:%02d".format(startPickerState.hour, startPickerState.minute))
                         }
                     }
 
-                    // End Time
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Schedule, null, tint = Color.Gray)
                         Spacer(Modifier.width(12.dp))
@@ -198,11 +281,7 @@ fun EditTaskScreen(
                         Checkbox(checked = useEndTime, onCheckedChange = { useEndTime = it })
                     }
                     if (useEndTime) {
-                        OutlinedButton(
-                            onClick = { showEndPicker = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
+                        OutlinedButton(onClick = { showEndPicker = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
                             Text("Set End: %02d:%02d".format(endPickerState.hour, endPickerState.minute))
                         }
                     }
@@ -219,24 +298,13 @@ fun EditTaskScreen(
                     Text("Priority", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TaskPriority.values().forEach {
-                            FilterChip(
-                                selected = priority == it,
-                                onClick = { priority = it },
-                                label = { Text(it.name) },
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            FilterChip(selected = priority == it, onClick = { priority = it }, label = { Text(it.name) }, shape = RoundedCornerShape(12.dp))
                         }
                     }
-
                     Text("How's your mood?", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TaskMood.values().forEach {
-                            FilterChip(
-                                selected = mood == it,
-                                onClick = { mood = it },
-                                label = { Text(it.name) },
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            FilterChip(selected = mood == it, onClick = { mood = it }, label = { Text(it.name) }, shape = RoundedCornerShape(12.dp))
                         }
                     }
                 }
@@ -252,7 +320,8 @@ fun EditTaskScreen(
                         priority = priority,
                         mood = mood,
                         startDate = selectedDate,
-                        dueDate = currentTimeText
+                        dueDate = currentTimeText,
+                        lifeArea = selectedArea.name
                     ))
                     navController.popBackStack()
                 },
@@ -267,13 +336,9 @@ fun EditTaskScreen(
         }
     }
 
-    /* ================= TIME PICKER DIALOGS ================= */
-    if (showStartPicker) {
-        TimePickerDialog(onDismiss = { showStartPicker = false }, state = startPickerState)
-    }
-    if (showEndPicker) {
-        TimePickerDialog(onDismiss = { showEndPicker = false }, state = endPickerState)
-    }
+    if (showStartPicker) TimePickerDialog(onDismiss = { showStartPicker = false }, state = startPickerState)
+    if (showEndPicker) TimePickerDialog(onDismiss = { showEndPicker = false }, state = endPickerState)
+
     if (showConfirmExit) {
         AlertDialog(
             onDismissRequest = { showConfirmExit = false },

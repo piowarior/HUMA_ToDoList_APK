@@ -59,32 +59,84 @@ fun AddTaskScreen(
     var showEndPicker by remember { mutableStateOf(false) }
     var selectedArea by remember { mutableStateOf(LifeArea.PRIBADI) }
 
-    // Smart Detect Logic
+    // Smart Detect Logic with Typo Correction
     LaunchedEffect(title) {
         val input = title.trim().lowercase()
         if (input.isBlank()) {
             selectedArea = LifeArea.PRIBADI
             return@LaunchedEffect
         }
+
         val keywordsMap = mapOf(
-            LifeArea.AKADEMIK to listOf("belajar", "tugas", "kuliah", "kerja", "meeting", "rapat", "proyek", "project", "skripsi", "coding", "ujian", "quiz", "laporan", "magang", "bisnis"),
-            LifeArea.KESEHATAN to listOf("lari", "gym", "workout", "olahraga", "sehat", "obat", "vitamin", "sakit", "dokter", "diet", "puasa", "tidur", "yoga", "renang"),
-            LifeArea.SPIRITUAL to listOf("sholat", "doa", "ibadah", "ngaji", "meditasi", "dzikir", "yasinan", "kajian", "gereja", "alkitab", "quran", "sedekah"),
-            LifeArea.RUMAH_TANGGA to listOf("sapu", "pel", "masak", "cuci", "piring", "baju", "belanja", "listrik", "beres", "kebun", "sampah"),
-            LifeArea.SOSIAL to listOf("nongkrong", "kencan", "date", "ketemu", "main", "futsal", "nobar", "silaturahmi", "reuni", "chat", "telpon", "pesta")
+            LifeArea.AKADEMIK to listOf(
+                "belajar", "tugas", "kuliah", "kerja", "meeting", "rapat", "proyek", "project", "skripsi", "coding", 
+                "ujian", "quiz", "laporan", "magang", "bisnis", "kantor", "presentasi", "buku", "lab", "praktikum",
+                "sempro", "sidang", "praktek", "office", "work", "study", "exam", "assignment", "deadline", "course",
+                "lecture", "univ", "sekolah", "pr", "homework", "training", "workshop", "seminar", "riset", "research"
+            ),
+            LifeArea.KESEHATAN to listOf(
+                "lari", "gym", "workout", "olahraga", "sehat", "obat", "vitamin", "sakit", "dokter", "diet", "puasa", 
+                "tidur", "yoga", "renang", "sepeda", "health", "fitness", "bola", "basket", "badminton", "medis", "checkup",
+                "vaksing", "klinik", "rs", "rumah sakit", "apotek", "suplemen", "istirahat", "rest", "sport", "futsal",
+                "tenis", "voli", "karate", "pencak silat", "jalan santai", "jogging", "marathon", "kalori", "protein"
+            ),
+            LifeArea.SPIRITUAL to listOf(
+                "sholat", "doa", "ibadah", "ngaji", "meditasi", "dzikir", "yasinan", "kajian", "gereja", "alkitab", 
+                "quran", "sedekah", "pray", "religious", "tahajud", "dhuha", "maghrib", "isya", "subuh", "zuhur", "ashar",
+                "puasa", "ramadhan", "misa", "kebaktian", "vihara", "pura", "sholawat", "taubat", "tasbih", "tahlil",
+                "zakat", "infaq", "wakaf", "haji", "umroh", "ustad", "pastur", "pendeta", "bhikkhu"
+            ),
+            LifeArea.RUMAH_TANGGA to listOf(
+                "sapu", "pel", "masak", "cuci", "piring", "baju", "belanja", "listrik", "beres", "kebun", "sampah",
+                "bersih", "home", "house", "cleaning", "masak", "dapur", "pasar", "supermarket", "furniture", "rusak",
+                "perbaiki", "service", "ac", "genteng", "cat", "lampu", "keran", "taman", "siram", "bunga", "tanaman",
+                "makan", "sarapan", "lunch", "dinner", "jemur", "setrika", "folding", "debu"
+            ),
+            LifeArea.SOSIAL to listOf(
+                "nongkrong", "kencan", "date", "ketemu", "main", "futsal", "nobar", "silaturahmi", "reuni", "chat", 
+                "telpon", "pesta", "social", "party", "hangout", "dinner", "makan bareng", "teman", "pacar", "keluarga",
+                "family", "friends", "visit", "kunjung", "ngopi", "kafe", "mall", "bioskop", "film", "telp", "wa",
+                "video call", "vc", "kumpul", "arisan", "wedding", "nikahan", "kondangan", "ulang tahun", "ultah"
+            )
         )
-        val inputWords = input.split(Regex("[^a-zA-Z0-9]+")).filter { it.isNotBlank() }
-        var foundExactArea: LifeArea? = null
-        for (word in inputWords) {
-            for (entry in keywordsMap) {
-                if (entry.value.any { it.lowercase() == word }) {
-                    foundExactArea = entry.key
-                    break
+
+        fun levenshteinDistance(s1: String, s2: String): Int {
+            val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
+            for (i in 0..s1.length) dp[i][0] = i
+            for (j in 0..s2.length) dp[0][j] = j
+            for (i in 1..s1.length) {
+                for (j in 1..s2.length) {
+                    val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                    dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
                 }
             }
-            if (foundExactArea != null) break
+            return dp[s1.length][s2.length]
         }
-        selectedArea = foundExactArea ?: LifeArea.PRIBADI
+
+        val inputWords = input.split(Regex("[^a-zA-Z0-9]+")).filter { it.isNotBlank() }
+        var bestMatchArea: LifeArea? = null
+        var minDistance = 3 // Max typo tolerance (threshold)
+
+        for (word in inputWords) {
+            for (entry in keywordsMap) {
+                for (keyword in entry.value) {
+                    if (word == keyword) {
+                        bestMatchArea = entry.key
+                        minDistance = 0
+                        break
+                    }
+                    val dist = levenshteinDistance(word, keyword)
+                    if (dist < minDistance) {
+                        minDistance = dist
+                        bestMatchArea = entry.key
+                    }
+                }
+                if (minDistance == 0) break
+            }
+            if (minDistance == 0) break
+        }
+
+        selectedArea = bestMatchArea ?: LifeArea.PRIBADI
     }
 
     Scaffold(
@@ -159,13 +211,21 @@ fun AddTaskScreen(
                         Spacer(Modifier.width(12.dp))
                         Text("Task Date", fontWeight = FontWeight.Bold)
                         Spacer(Modifier.weight(1f))
-                        TextButton(onClick = {
-                            DatePickerDialog(context, { _, y, m, d ->
-                                calendar.set(y, m, d)
-                                selectedDate = calendar.timeInMillis
-                            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
-                        }) {
-                            Text(selectedDate?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it)) } ?: "Pick Date")
+                        TextButton(
+                            onClick = {
+                                if (isUpcoming) {
+                                    DatePickerDialog(context, { _, y, m, d ->
+                                        calendar.set(y, m, d)
+                                        selectedDate = calendar.timeInMillis
+                                    }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+                                }
+                            },
+                            enabled = isUpcoming // Hanya bisa di-klik jika mode Upcoming
+                        ) {
+                            Text(
+                                text = selectedDate?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it)) } ?: "Pick Date",
+                                color = if (isUpcoming) MaterialTheme.colorScheme.primary else Color.Gray
+                            )
                         }
                     }
 

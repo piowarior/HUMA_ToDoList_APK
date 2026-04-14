@@ -47,6 +47,7 @@ fun TaskDetailScreen(
 ) {
     val context = LocalContext.current
     val task by viewModel.getTaskById(taskId).collectAsState(initial = null)
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (task == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -86,7 +87,7 @@ fun TaskDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // TITLE & DESC CARD (Matches Edit Screen Style)
+            // TITLE & DESC CARD
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -129,7 +130,7 @@ fun TaskDetailScreen(
                 }
             }
 
-            // DATE & TIME CARD (Matches Edit Screen Style)
+            // DATE & TIME CARD
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -159,7 +160,7 @@ fun TaskDetailScreen(
                 }
             }
 
-            // PRIORITY & MOOD CARD (Matches Edit Screen Style)
+            // PRIORITY & MOOD CARD
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -216,7 +217,7 @@ fun TaskDetailScreen(
                             color = if (task!!.isDone) Color(0xFF2E7D32) else Color(0xFF1A1C1E)
                         )
                         Text(
-                            text = if (task!!.isDone) "Tap to reactive task" else "Tap to mark as finished",
+                            text = if (task!!.isDone) "Tap to reactivate task" else "Tap to mark as finished",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -226,10 +227,7 @@ fun TaskDetailScreen(
 
             // DELETE ACTION
             TextButton(
-                onClick = {
-                    viewModel.deleteTask(context, task!!)
-                    navController.popBackStack()
-                },
+                onClick = { showDeleteDialog = true },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFE53935))
             ) {
@@ -240,5 +238,29 @@ fun TaskDetailScreen(
             
             Spacer(Modifier.height(30.dp))
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Hapus Permanen? 🗑️") },
+            text = { Text("Tindakan ini tidak dapat dibatalkan. Apakah kamu yakin ingin menghapus \"${task?.title}\" secara permanen?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteTask(context, task!!)
+                        navController.popBackStack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
