@@ -9,7 +9,7 @@ interface CommitmentDao {
     fun getAllCommitments(): Flow<List<CommitmentEntity>>
 
     @Insert
-    suspend fun insertCommitment(commitment: CommitmentEntity)
+    suspend fun insertCommitment(commitment: CommitmentEntity): Long
 
     @Update
     suspend fun updateCommitment(commitment: CommitmentEntity)

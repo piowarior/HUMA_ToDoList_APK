@@ -16,7 +16,7 @@ import com.huma.app.data.local.streak.StreakEntity
         CapsuleEntity::class,
         CommitmentEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(

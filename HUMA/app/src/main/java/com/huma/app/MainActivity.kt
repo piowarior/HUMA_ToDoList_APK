@@ -169,7 +169,13 @@ class MainActivity : ComponentActivity() {
                     composable("capsule") { TimeCapsuleScreen(capsuleViewModel) }
                     composable("mind_games") { MindGamesScreen(navController = navController) }
                     composable("commitments") { CommitmentScreen(navController = navController) }
-                    composable("add_commitment") { AddCommitmentScreen(navController = navController) }
+                    composable(
+                        route = "add_commitment?id={id}",
+                        arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = -1 })
+                    ) { backStackEntry ->
+                        val id = backStackEntry.arguments?.getInt("id") ?: -1
+                        AddCommitmentScreen(navController, if (id != -1) id else null)
+                    }
                     composable(
                         route = "note_editor?noteId={noteId}",
                         arguments = listOf(navArgument("noteId") {

@@ -5,11 +5,17 @@ import androidx.room.TypeConverter
 class ListIntConverter {
 
     @TypeConverter
-    fun fromList(list: List<Int>): String =
-        list.joinToString(",")
+    fun fromList(list: List<Int>?): String {
+        return list?.joinToString(";") ?: ""
+    }
 
     @TypeConverter
-    fun toList(value: String): List<Int> =
-        if (value.isBlank()) emptyList()
-        else value.split(",").map { it.toInt() }
+    fun toList(value: String?): List<Int> {
+        if (value.isNullOrBlank()) return emptyList()
+        return try {
+            value.split(";").filter { it.isNotBlank() }.map { it.toInt() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }

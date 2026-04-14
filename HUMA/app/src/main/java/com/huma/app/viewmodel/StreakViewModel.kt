@@ -33,23 +33,21 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     var showInquiry by mutableStateOf(false)
     var isAwakeningActive by mutableStateOf(false)
 
-    // --- DEBUG MODE (Time Machine) ---
-    // Gunakan ini untuk ngetest visual tanpa nunggu berhari-hari
-    var debugDaysOffset by mutableStateOf(0)
+    // --- POPUPS & STATUS ---
     var isDeadPopup by mutableStateOf(false)
     var isOutOfLifePopup by mutableStateOf(false)
-    var restoreCounter by mutableStateOf(0) // hitung login rutin buat refill protection
+    var debugDaysOffset by mutableStateOf(0)
+    var restoreCounter by mutableStateOf(0) 
 
     /**
-     * CEK STATUS STREAK (Panggil setiap kali Screen dibuka)
-     * Logika untuk mengecek apakah streak putus, terancam, atau aman.
+     * CEK STATUS STREAK
+     * Dipanggil saat aplikasi dibuka untuk mendeteksi apakah hari sudah berganti.
      */
-    // Di dalam StreakViewModel.kt, ubah fungsi ini:
-
     fun checkStreakLogic() {
         viewModelScope.launch {
             val data = dao.getStreak().firstOrNull() ?: return@launch
 
+            // Jika user baru, jangan lakukan apa-apa
             if (data.lastLoginMillis == 0L && data.currentStreak == 0) {
                 return@launch
             }
@@ -58,58 +56,49 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
             val diffDays = daysBetween(data.lastLoginMillis, today)
 
             when {
-                diffDays == 0 -> {
-                    // ✅ HARI SAMA → JANGAN UBAH APA APA
+                diffDays <= 0 -> {
+                    // Masih di hari yang sama, tidak perlu reset ritual
                     return@launch
                 }
 
                 diffDays == 1 -> {
+                    // HARI BARU (Besoknya)
+                    // Matikan api agar user bisa melakukan ritual lagi
+                    if (data.isIgnitedToday) {
+                        dao.upsertStreak(data.copy(isIgnitedToday = false))
+                    }
+                    
+                    // Logika Shield Otomatis (Jika rutin login 7 hari)
                     var counter = restoreCounter + 1
-
                     if (!data.hasShield && counter >= 7) {
-                        dao.upsertStreak(
-                            data.copy(
-                                isIgnitedToday = false,
-                                hasShield = true
-                            )
-                        )
+                        dao.upsertStreak(data.copy(hasShield = true))
                         restoreCounter = 0
                     } else {
-                        dao.upsertStreak(
-                            data.copy(
-                                isIgnitedToday = false
-                            )
-                        )
                         restoreCounter = counter
                     }
                 }
 
                 diffDays == 2 -> {
-                    // bolong 1 hari
-                    isAwakeningActive = true
+                    // BOLONG 1 HARI (Kemarin tidak ritual)
+                    handleStreakThreat(data)
                 }
 
                 diffDays >= 3 -> {
-                    // mati total
+                    // MATI TOTAL (Lebih dari 2 hari tidak ritual)
                     isDeadPopup = true
                 }
             }
         }
     }
 
-
-
-
-
-    // Helper untuk hitung selisih hari
-
-
     private suspend fun handleStreakThreat(data: StreakEntity) {
         when {
             data.hasShield -> {
+                // Perisai pecah tapi streak selamat
                 dao.upsertStreak(data.copy(hasShield = false, isIgnitedToday = false))
             }
             data.lifeLineCount > 0 -> {
+                // Masuk mode penyelamatan (Awakening Ritual)
                 isAwakeningActive = true
             }
             else -> {
@@ -117,8 +106,6 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
             }
         }
     }
-
-
 
     /**
      * RITUAL 1: FRICTION (Gesek Batu Api)
@@ -135,7 +122,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
     }
 
     /**
-     * RITUAL 2 & 3: BAKAR KATA & NYALAKAN API (Ignite)
+     * RITUAL 2 & 3: NYALAKAN API (The Great Ignition)
      */
     fun igniteTheFlame(word: String) {
         viewModelScope.launch {
@@ -143,13 +130,9 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
             if (data.isIgnitedToday) return@launch
 
             val todayStart = getTodayStartMillis()
-
-            if (daysBetween(data.lastLoginMillis, todayStart) >= 1) {
-                dao.upsertStreak(data.copy(isIgnitedToday = false))
-            }
             var newStreak = data.currentStreak
 
-            // 🔹 Jika hari sebelumnya protected tapi belum di-ignite, anggap valid
+            // Jika hari sebelumnya diproteksi (pakai nyawa), sinkronkan angka streak
             if (data.protectedDays.contains(newStreak + 1)) {
                 newStreak += 1
             }
@@ -164,18 +147,16 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
                 lastLoginMillis = todayStart,
                 streakStartMillis = if (data.currentStreak == 0) todayStart else data.streakStartMillis,
                 highestStreak = maxOf(data.highestStreak, newStreak),
-                hasShield = newStreak >= 25
+                hasShield = newStreak >= 25 // Perisai permanen di hari 25
             )
 
             dao.upsertStreak(updatedData)
 
-            // Reset UI friction
+            // Reset UI
             showInquiry = false
             currentFriction = 0f
         }
     }
-
-
 
     /**
      * RITUAL 4: GUNAKAN NYAWA (Penyelamatan Manual)
@@ -201,26 +182,13 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
                 )
             )
 
-            checkStreakLogic()
             isAwakeningActive = false
+            checkStreakLogic()
         }
     }
 
-
-
-
-
-
-    /**
-     * FUNGSI DINAMIS UNTUK UI (Evolusi Api Harian)
-     * Menggabungkan data asli + debug offset
-     */
     fun getEffectiveStreak(): Int = (_streakData.value?.currentStreak ?: 0) + debugDaysOffset
 
-
-    /**
-     * DETERMINASI VISUAL (Mega Detail Per Hari)
-     */
     fun getFireLevel(): FireLevel {
         val days = getEffectiveStreak()
         return when {
@@ -238,11 +206,7 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
 
     fun resetTotalStreak() {
         viewModelScope.launch {
-            dao.upsertStreak(
-                StreakEntity(id = 0)
-            )
-
-            // Reset UI State
+            dao.upsertStreak(StreakEntity(id = 0))
             currentFriction = 0f
             showInquiry = false
             isAwakeningActive = false
@@ -253,31 +217,9 @@ class StreakViewModel(private val dao: StreakDao) : ViewModel() {
         }
     }
 
-
-
-    // --- DEBUG FUNCTIONS (Time Machine) ---
+    // --- DEBUG TIME MACHINE ---
     fun debugAddDays(amount: Int) { debugDaysOffset += amount }
-    fun debugSetDays(target: Int) {
-        val currentReal = _streakData.value?.currentStreak ?: 0
-        debugDaysOffset = target - currentReal
-    }
-    fun debugReset() { debugDaysOffset = 0 }
-
-    // Di dalam StreakScreen.kt (tambahkan di luar Composable)
-    fun playIgniteSound(context: android.content.Context, streak: Int) {
-        val soundRes = when {
-            streak >= 100 -> /* raw res supernova */ 0
-            streak >= 30 -> /* raw res inferno */ 0
-            streak % 10 == 0 -> /* raw res spesial tiap 10 */ 0
-            else -> /* raw res api biasa */ 0
-        }
-        // Implementasi sederhana: MediaPlayer.create(context, soundRes).start()
-    }
 }
-
-
-
-private const val DAY = 1000L * 60 * 60 * 24
 
 private fun getTodayStartMillis(): Long {
     return Calendar.getInstance().apply {

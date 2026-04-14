@@ -5,8 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.huma.app.data.local.AppDatabase
 import com.huma.app.data.local.CommitmentEntity
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -14,27 +13,25 @@ import java.util.*
 class CommitmentViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = AppDatabase.getInstance(application).commitmentDao()
 
-    val allCommitments = dao.getAllCommitments().stateIn(
+    val allCommitments = try {
+        dao.getAllCommitments()
+    } catch (e: Exception) {
+        flowOf(emptyList())
+    }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
 
-    fun addCommitment(title: String, desc: String) {
+    fun addCommitment(commitment: CommitmentEntity) {
         viewModelScope.launch {
-            dao.insertCommitment(CommitmentEntity(title = title, description = desc))
+            dao.insertCommitment(commitment)
         }
     }
 
-    fun toggleCompleteToday(commitment: CommitmentEntity) {
+    fun updateCommitment(commitment: CommitmentEntity) {
         viewModelScope.launch {
-            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-            val newList = if (commitment.completedDays.contains(today)) {
-                commitment.completedDays.filter { it != today }
-            } else {
-                commitment.completedDays + today
-            }
-            dao.updateCommitment(commitment.copy(completedDays = newList))
+            dao.updateCommitment(commitment)
         }
     }
 
