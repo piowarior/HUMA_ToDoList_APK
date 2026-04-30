@@ -12,6 +12,17 @@ Aplikasi ini dibangun dengan **Jetpack Compose** dan arsitektur **MVVM**, sehing
 
 ---
 
+
+## 📥 Download APK
+
+Coba aplikasi **HUMA** secara langsung melalui file APK berikut:
+
+👉 [Download APK HUMA](LINK_APK_KAMU)
+
+> Pastikan mengaktifkan izin install aplikasi dari sumber luar (Unknown Sources) pada Android.
+
+---
+
 ## 🎯 Konsep Utama Aplikasi
 
 HUMA berfokus pada **3 hal utama**:
@@ -185,23 +196,25 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
 
 ### 📱 Dashboard
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/641d8603-f151-429c-91ff-5112037f1401" width="250">
+  <img src="https://github.com/user-attachments/assets/614b50d4-12d6-489b-a144-e9ae2f23225f" width="250">
+  <img src="https://github.com/user-attachments/assets/b281fc04-e549-4311-9277-b194a473952b" width="250">
 </p>
 
 
 
 ### ✅ Task Management (Add & Preview)
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/60b7296b-3447-48a9-84bc-d1bb02ccb135" width="250" alt="Add Task">
+  <img src="https://github.com/user-attachments/assets/9a14aab2-a2dd-4c0f-8ab8-38e5f21a9048" width="250" alt="Add Task">
   <img src="https://github.com/user-attachments/assets/6e85bca3-e8a3-421d-8afd-e23fece60690" width="250" alt="Preview Task">
-  <img src="https://github.com/user-attachments/assets/d8d07be1-3c59-4053-a73a-ec84c649be14" width="250" alt="Task on Dashboard">
+  <img src="https://github.com/user-attachments/assets/fb69f293-7185-4af4-afbd-649a73711c95" width="250" alt="Task on Dashboard">
 </p>
 
 
 ### 🔥 Daily Comitment
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/808a6519-62d3-4d43-b84b-860ead8e2057" width="250">
-  <img src="https://github.com/user-attachments/assets/f4e7335c-82d9-43ba-a13f-c24de0e2f12a" width="250">
+  <img src="https://github.com/user-attachments/assets/82715ce9-a84a-4624-83e9-e838096d0231" width="250">
+  <img src="https://github.com/user-attachments/assets/3b3be4e5-8507-461f-acdb-f8bd5eb06011" width="250">
+  <img src="https://github.com/user-attachments/assets/4fe6a289-b26d-498f-a1e3-4c2038b06545" width="250">
 </p>
 
 ### 📊 Feature
@@ -241,7 +254,14 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
   <img src="https://github.com/user-attachments/assets/a5d1c79b-e2c5-4989-b487-933eb3dfeb8a" width="250">
   <img src="https://github.com/user-attachments/assets/4fc9f534-2673-4e83-9436-5648c57716fe" width="250">
 </p>
+
+### 🗄️ Widget 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/b5b56e55-a715-413b-b1c5-e38e57bae65c" width="250">
+</p>
+
 ---
+
 
 ## 🛠️ Teknologi yang Digunakan
 
