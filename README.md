@@ -185,8 +185,10 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
 
 ### 📱 Dashboard
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/543e9351-2ff6-4802-8bba-8ba7ef7dd17f" width="250">
+  <img src="https://github.com/user-attachments/assets/641d8603-f151-429c-91ff-5112037f1401" width="250">
 </p>
+
+
 
 ### ✅ Task Management (Add & Preview)
 <p align="center">
@@ -194,6 +196,7 @@ Berikut adalah teknologi dan tools yang digunakan dalam pengembangan aplikasi **
   <img src="https://github.com/user-attachments/assets/6e85bca3-e8a3-421d-8afd-e23fece60690" width="250" alt="Preview Task">
   <img src="https://github.com/user-attachments/assets/d8d07be1-3c59-4053-a73a-ec84c649be14" width="250" alt="Task on Dashboard">
 </p>
+
 
 ### 🔥 Daily Comitment
 <p align="center">
