@@ -10,6 +10,10 @@ import java.util.*
 
 object CommitmentNotification {
 
+    /**
+     * 🔥 Fungsi Abadi: Menjadwalkan notifikasi harian untuk Commitment.
+     * Tidak peduli streak hidup atau mati, notifikasi ini akan tetap muncul setiap hari.
+     */
     fun scheduleNotifications(context: Context, commitment: CommitmentEntity) {
         if (!commitment.isNotificationEnabled) {
             cancelNotifications(context, commitment)
@@ -22,12 +26,12 @@ object CommitmentNotification {
                 val hour = parts[0].toIntOrNull() ?: return@forEachIndexed
                 val minute = parts[1].toIntOrNull() ?: return@forEachIndexed
                 
-                scheduleDailyNotification(context, commitment, index, hour, minute)
+                scheduleDailyRepeatingAlarm(context, commitment, index, hour, minute)
             }
         }
     }
 
-    private fun scheduleDailyNotification(
+    private fun scheduleDailyRepeatingAlarm(
         context: Context,
         commitment: CommitmentEntity,
         timeIndex: Int,
@@ -41,7 +45,6 @@ object CommitmentNotification {
             putExtra("id", commitment.id)
         }
 
-        // Unique ID for each commitment and each time slot
         val requestCode = commitment.id * 100 + timeIndex
 
         val pendingIntent = PendingIntent.getBroadcast(
@@ -57,37 +60,22 @@ object CommitmentNotification {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
             
-            // If the time has already passed today, schedule for tomorrow
             if (before(Calendar.getInstance())) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    calendar.timeInMillis,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-            }
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
-        }
+        // 🔥 Menggunakan setInexactRepeating untuk efisiensi baterai tapi tetap 'Abadi' setiap hari
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            AlarmManager.INTERVAL_DAY,
+            pendingIntent
+        )
     }
 
     fun cancelNotifications(context: Context, commitment: CommitmentEntity) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        // We don't know exactly how many times were scheduled before, 
-        // but we can try to cancel a reasonable number (e.g., 10) or better:
-        // When updating, we should probably have a way to track active requestCodes.
-        // For simplicity, let's assume max 10 notifications per commitment.
         for (i in 0 until 10) {
             val intent = Intent(context, NotificationReceiver::class.java)
             val pendingIntent = PendingIntent.getBroadcast(

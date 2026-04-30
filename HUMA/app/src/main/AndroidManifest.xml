@@ -21,6 +21,10 @@
         android:name=".ui.notification.NotificationReceiver"
         android:exported="false" />
 
+        <receiver
+            android:name=".ui.notification.NotificationDismissReceiver"
+            android:exported="false" />
+
         <service
             android:name=".ui.notification.FocusService"
             android:foregroundServiceType="specialUse"

@@ -22,24 +22,6 @@ object NotificationHelper {
     const val ID_REMINDER = 1002
     const val ID_STREAK_MISS = 1003
 
-    // Data Sumber untuk Greeting
-    val GREETING_DATA = listOf(
-        "Pagi yang Cerah! ☀️" to "Awali harimu dengan niat yang kuat. Mari produktif!",
-        "Halo, Human! ☕" to "Kopi sudah siap, semangat juga harus siap. Apa goalsmu hari ini?",
-        "Waktunya Bangun! 🌈" to "Dunia menunggumu. Jangan lupa tersenyum pagi ini.",
-        "Hey! ✨" to "Hari ini adalah kesempatan baru untuk menjadi versi terbaikmu.",
-        "Good Morning! 🌸" to "Semoga harimu dipenuhi dengan hal-hal positif."
-    )
-
-    // Data Sumber untuk Reminder
-    val REMINDER_DATA = listOf(
-        "Nyalakan Apimu! 🔥" to "Streak kamu masih menunggu. Yuk ritual sebentar!",
-        "Jangan Lupa! 🕯️" to "Konsistensi adalah kunci. Cuma butuh 1 menit kok.",
-        "Api Mulai Redup... ⚡" to "Bakar kata hari ini agar streak kamu tetap membara!",
-        "Panggilan Ritual 🏮" to "Jaga momentum kamu. Mari bakar satu kata sekarang.",
-        "Reminder Streak 🧨" to "Jangan biarkan progresmu hilang. Yuk aktifkan api hari ini!"
-    )
-
     fun init(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -78,6 +60,14 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            putExtra("notif_id", notifId)
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context, notifId + 1, dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.logohumaicon)
             .setContentTitle(title)
@@ -88,8 +78,10 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(category)
             .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
+            .setOngoing(true) // 🔥 GAK BISA DI-SWIPE
+            .setAutoCancel(false) // 🔥 Gak hilang saat diklik otomatis
             .setDefaults(Notification.DEFAULT_ALL)
+            .addAction(0, "TUTUP", dismissPendingIntent) // Tombol Close
             .build()
 
         NotificationManagerCompat.from(context).notify(notifId, notif)

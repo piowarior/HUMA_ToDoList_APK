@@ -17,6 +17,7 @@ class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val title = intent.getStringExtra("title") ?: "Reminder"
         val type = intent.getStringExtra("type") ?: "task"
+        val notificationId = title.hashCode() + type.hashCode()
 
         val rootIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -24,8 +25,19 @@ class NotificationReceiver : BroadcastReceiver() {
 
         val pendingIntent = PendingIntent.getActivity(
             context,
-            title.hashCode() + type.hashCode(),
+            notificationId,
             rootIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Intent for Close button
+        val dismissIntent = Intent(context, NotificationDismissReceiver::class.java).apply {
+            putExtra("notif_id", notificationId)
+        }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            context,
+            notificationId + 1,
+            dismissIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -37,12 +49,12 @@ class NotificationReceiver : BroadcastReceiver() {
 
         val notificationTitle = if (type == "commitment") "Commitment Reminder 🎯" else "Huma Reminder 🎯"
         val bigText = if (type == "commitment") {
-            "Waktunya melakukan: $title\n\nJaga streak kamu agar tidak terputus! Semangat terus ya! 🔥"
+            "Waktunya melakukan: $title\n\nJaga momentum kamu! Semangat terus ya! 🔥"
         } else {
             "Tugas: $title\n\nJangan ditunda ya, mari selesaikan sekarang! ✨"
         }
 
-        val notification = NotificationCompat.Builder(context, "task_channel")
+        val notification = NotificationCompat.Builder(context, "huma_reminder") 
             .setSmallIcon(R.drawable.logohumaicon) 
             .setLargeIcon(largeIcon)
             .setContentTitle(notificationTitle)
@@ -53,17 +65,18 @@ class NotificationReceiver : BroadcastReceiver() {
             .setColor(Color.parseColor("#FFA726"))
             .setColorized(true)
             .setContentIntent(pendingIntent)
-            .addAction(0, "BUKA APLIKASI", pendingIntent)
+            .addAction(0, "BUKA", pendingIntent)
+            .addAction(0, "TUTUP", dismissPendingIntent) // Tombol Close
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setAutoCancel(true)
+            .setOngoing(true) // 🔥 STICKY: Gak bisa dihapus geser
+            .setAutoCancel(false) 
             .build()
 
         try {
-            NotificationManagerCompat.from(context).notify(title.hashCode() + type.hashCode(), notification)
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
         } catch (e: SecurityException) {
-            // Permission not granted
         }
     }
 }

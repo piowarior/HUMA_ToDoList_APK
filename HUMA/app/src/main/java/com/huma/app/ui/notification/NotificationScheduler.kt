@@ -24,14 +24,13 @@ object NotificationScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "daily_greeting",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP, // 🔥 Pakai KEEP agar jadwal tidak ter-reset terus
             workRequest
         )
     }
 
     /**
      * 2️⃣ Reminder Streak - Wajib 2x sehari (Pagi & Malam)
-     * Hanya muncul jika streak belum dinyalakan hari ini.
      */
     private fun scheduleStreakReminders(context: Context) {
         // Pagi (Jam 08:00)
@@ -41,7 +40,7 @@ object NotificationScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "streak_reminder_morning",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP,
             morningReminder
         )
 
@@ -52,13 +51,13 @@ object NotificationScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "streak_reminder_evening",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP,
             eveningReminder
         )
     }
 
     /**
-     * 3️⃣ Streak Miss Checker - Berjalan setiap 12 jam untuk mengecek kelewatan streak
+     * 3️⃣ Streak Miss Checker - Berjalan setiap 12 jam
      */
     private fun scheduleStreakCheck(context: Context) {
         val workRequest = PeriodicWorkRequestBuilder<StreakCheckWorker>(12, TimeUnit.HOURS)
@@ -66,7 +65,7 @@ object NotificationScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "streak_miss_checker",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            ExistingPeriodicWorkPolicy.KEEP,
             workRequest
         )
     }
