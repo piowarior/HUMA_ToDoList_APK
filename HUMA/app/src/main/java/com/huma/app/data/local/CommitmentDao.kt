@@ -8,6 +8,9 @@ interface CommitmentDao {
     @Query("SELECT * FROM commitments ORDER BY createdAt DESC")
     fun getAllCommitments(): Flow<List<CommitmentEntity>>
 
+    @Query("SELECT * FROM commitments ORDER BY createdAt DESC")
+    suspend fun getAllCommitmentsSync(): List<CommitmentEntity>
+
     @Insert
     suspend fun insertCommitment(commitment: CommitmentEntity): Long
 

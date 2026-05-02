@@ -23,28 +23,28 @@ class StreakCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
         val diff = (today - streakData.lastDayId).toInt()
 
         when {
-            // Lewat 1 hari (Hari ke-2 tidak streak)
+            // Lewat 1 hari (Missed yesterday completely, now it's the day after)
             diff == 2 -> {
                 notify(
-                    "Masih Ada Kesempatan! 🕯️",
-                    "Streak kamu hampir terputus. Ayo login kembali dan nyalakan apimu sekarang!",
-                    "#FF9800" // Orange
+                    "Masih Ada Peluang! 🔥",
+                    "Kamu kelewat 1 hari nih, tapi tenang! Masih ada peluang api menyala jika kamu memiliki protection. Yuk login! 🛡️",
+                    "#FF9800"
                 )
             }
-            // Lewat 2 hari (Hari ke-3 tidak streak)
-            diff == 3 -> {
+            // Lewat 5 hari
+            diff == 6 -> {
                 notify(
-                    "Api Telah Padam... 🌑",
-                    "Sayang sekali, api kamu sudah padam sepenuhnya. Kamu kembali ke awal, tapi jangan menyerah! Ayo mulai lagi.",
-                    "#F44336" // Red
+                    "Sudah Lumayan Lama... ⏳",
+                    "Sudah 5 hari kamu gak mampir. Ayo kita ulangin lagi rutinitas baikmu, jangan sampai benar-benar padam! 🕯️",
+                    "#F44336"
                 )
             }
-            // Lewat seminggu (Hari ke-8) dan setiap minggu berikutnya
+            // Lewat 7 hari dan setiap kelipatan 7 hari berikutnya
             diff >= 8 && (diff - 1) % 7 == 0 -> {
                 notify(
-                    "Apimu Merindukanmu ❄️",
-                    "Sudah beberapa hari terlewatkan... Bagaimana kabar apimu? HUMA menunggumu kembali aktif.",
-                    "#B71C1C" // Deep Red
+                    "Rindu Kehangatan Apimu ❄️",
+                    "Sudah seminggu lebih terlewatkan... HUMA merindukanmu. Mari nyalakan kembali semangatmu hari ini! ✨",
+                    "#B71C1C"
                 )
             }
         }

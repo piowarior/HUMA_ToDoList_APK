@@ -5,13 +5,18 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import java.util.Calendar
+import kotlin.random.Random
 
 class RandomGreetingWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
         
-        // Hanya muncul jika dipicu antara jam 6 pagi sampai 12 siang (untuk jaga-jaga)
-        if (hour !in 6..12) return Result.success()
+        // Jika dipicu di luar jam 6-12, kita tidak munculkan sekarang, 
+        // tapi WorkManager akan mencoba lagi besok sesuai jadwal periodik.
+        if (hour !in 6..12) {
+            return Result.success()
+        }
 
         val greetings = listOf(
             "Pagi yang Cerah! ☀️" to "Awali harimu dengan niat yang kuat. Mari produktif bersama HUMA!",

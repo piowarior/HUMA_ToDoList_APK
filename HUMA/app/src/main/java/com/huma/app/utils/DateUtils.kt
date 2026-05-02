@@ -1,7 +1,6 @@
 package com.huma.app.utils
 
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
 
 fun daysBetween(startMillis: Long, endMillis: Long): Int {
     if (startMillis == 0L) return 0
@@ -27,7 +26,12 @@ fun daysBetween(startMillis: Long, endMillis: Long): Int {
 }
 
 fun getTodayDayId(): Long {
-    return System.currentTimeMillis() / (1000L * 60 * 60 * 24)
+    val cal = Calendar.getInstance()
+    cal.set(Calendar.HOUR_OF_DAY, 0)
+    cal.set(Calendar.MINUTE, 0)
+    cal.set(Calendar.SECOND, 0)
+    cal.set(Calendar.MILLISECOND, 0)
+    return cal.timeInMillis / (1000L * 60 * 60 * 24)
 }
 
 fun addDays(baseMillis: Long, days: Int): Long {
