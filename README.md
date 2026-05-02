@@ -17,7 +17,7 @@ Aplikasi ini dibangun dengan **Jetpack Compose** dan arsitektur **MVVM**, sehing
 
 Coba aplikasi **HUMA** secara langsung melalui file APK berikut:
 
-👉 [Download APK HUMA](LINK_APK_KAMU)
+👉 [Download APK HUMA](https://github.com/piowarior/HUMA_ToDoList_APK/releases/download/v1.0/app-debug.apk)
 
 > Pastikan mengaktifkan izin install aplikasi dari sumber luar (Unknown Sources) pada Android.
 
