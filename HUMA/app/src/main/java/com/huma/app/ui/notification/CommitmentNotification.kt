@@ -12,7 +12,7 @@ object CommitmentNotification {
 
     /**
      * 🔥 Fungsi Abadi: Menjadwalkan notifikasi harian untuk Commitment.
-     * Tidak peduli streak hidup atau mati, notifikasi ini akan tetap muncul setiap hari.
+     * Menggunakan setExactAndAllowWhileIdle agar "Mutlak Wajib" muncul tepat waktu.
      */
     fun scheduleNotifications(context: Context, commitment: CommitmentEntity) {
         if (!commitment.isNotificationEnabled) {
@@ -26,26 +26,30 @@ object CommitmentNotification {
                 val hour = parts[0].toIntOrNull() ?: return@forEachIndexed
                 val minute = parts[1].toIntOrNull() ?: return@forEachIndexed
                 
-                scheduleDailyRepeatingAlarm(context, commitment, index, hour, minute)
+                scheduleExactAlarm(context, commitment.id, commitment.title, index, hour, minute)
             }
         }
     }
 
-    private fun scheduleDailyRepeatingAlarm(
+    fun scheduleExactAlarm(
         context: Context,
-        commitment: CommitmentEntity,
+        commitmentId: Int,
+        title: String,
         timeIndex: Int,
         hour: Int,
         minute: Int
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, NotificationReceiver::class.java).apply {
-            putExtra("title", commitment.title)
+            putExtra("title", title)
             putExtra("type", "commitment")
-            putExtra("id", commitment.id)
+            putExtra("id", commitmentId)
+            putExtra("time_index", timeIndex)
+            putExtra("hour", hour)
+            putExtra("minute", minute)
         }
 
-        val requestCode = commitment.id * 100 + timeIndex
+        val requestCode = commitmentId * 100 + timeIndex
 
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -60,18 +64,24 @@ object CommitmentNotification {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
             
-            if (before(Calendar.getInstance())) {
+            if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
         }
 
-        // 🔥 Menggunakan setInexactRepeating untuk efisiensi baterai tapi tetap 'Abadi' setiap hari
-        alarmManager.setInexactRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY,
-            pendingIntent
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
+                AlarmManager.RTC_WAKEUP,
+                calendar.timeInMillis,
+                pendingIntent
+            )
+        }
     }
 
     fun cancelNotifications(context: Context, commitment: CommitmentEntity) {
