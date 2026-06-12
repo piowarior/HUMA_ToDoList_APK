@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.huma.app.R
 import com.huma.app.data.local.AppDatabase
+import com.huma.app.data.local.PreferenceManager
 import com.huma.app.utils.getTodayDayId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,21 +22,32 @@ class NotificationReceiver : BroadcastReceiver() {
 
     @RequiresPermission("android.permission.POST_NOTIFICATIONS")
     override fun onReceive(context: Context, intent: Intent) {
+        val pref = PreferenceManager(context)
         val type = intent.getStringExtra("type") ?: "task"
         val title = intent.getStringExtra("title") ?: "Reminder"
         val message = intent.getStringExtra("message") ?: ""
         val notificationId = intent.getIntExtra("id", title.hashCode() + type.hashCode())
 
-        // 🔥 SELF RESCHEDULE LOGIC (Agar "Mutlak Wajib" Setiap Hari)
+        // 1. Reschedule "Mutlak" untuk besok (Gak peduli setting on/off, jadwal harus tetap berputar)
         rescheduleIfNeeded(context, intent, type)
 
-        // 🔥 STREAK LOGIC CHECK
+        // 2. Cek apakah master notification aktif
+        if (!pref.isNotifEnabled) return
+
+        // 3. Cek setting spesifik per tipe
+        when (type) {
+            "greeting" -> if (!pref.isGreetingNotifEnabled) return
+            "streak_daily" -> if (!pref.isStreakNotifEnabled) return
+            "streak_miss" -> if (!pref.isStreakMissNotifEnabled) return
+        }
+
+        // 4. Khusus Streak Daily ada pengecekan database
         if (type == "streak_daily") {
-            handleStreakNotification(context)
+            handleStreakNotification(context, pref)
             return
         }
 
-        showNotification(context, type, title, message, notificationId)
+        showNotification(context, pref, type, title, message, notificationId)
     }
 
     private fun rescheduleIfNeeded(context: Context, intent: Intent, type: String) {
@@ -50,44 +62,29 @@ class NotificationReceiver : BroadcastReceiver() {
                     CommitmentNotification.scheduleExactAlarm(context, id, title, timeIndex, hour, minute)
                 }
             }
-            "greeting" -> {
-                NotificationScheduler.scheduleDailyGreeting(context)
-            }
-            "streak_daily" -> {
-                NotificationScheduler.scheduleDailyStreakReminder(context)
-            }
+            "greeting" -> NotificationScheduler.scheduleDailyGreeting(context, forceNextDay = true)
+            "streak_daily" -> NotificationScheduler.scheduleDailyStreakReminder(context, forceNextDay = true)
         }
     }
 
-    private fun handleStreakNotification(context: Context) {
+    private fun handleStreakNotification(context: Context, pref: PreferenceManager) {
         val db = AppDatabase.getInstance(context)
         CoroutineScope(Dispatchers.IO).launch {
             val streak = db.streakDao().getStreak().firstOrNull()
             
             if (streak == null || streak.lastDayId == 0L) {
-                // User belum pernah buka fitur streak
-                showNotification(
-                    context, "streak", 
-                    "Nyalakan Apimu! 🔥", 
-                    "Kamu belum memulai perjalanan streak. Ayo buka fitur Streak dan nyalakan api pertamamu!", 
-                    NotificationHelper.ID_REMINDER
-                )
+                showNotification(context, pref, "streak", "Nyalakan Apimu! 🔥", "Kamu belum memulai perjalanan streak. Ayo buka fitur Streak dan nyalakan api pertamamu!", NotificationHelper.ID_REMINDER)
             } else if (!streak.isIgnitedToday) {
-                // Streak sudah berjalan tapi belum dinyalakan hari ini
-                showNotification(
-                    context, "streak", 
-                    "Api Hampir Padam! 🕯️", 
-                    "Jangan biarkan kerja kerasmu hilang. Ayo login dan lakukan ritual penyulutan sekarang!", 
-                    NotificationHelper.ID_REMINDER
-                )
+                showNotification(context, pref, "streak", "Api Hampir Padam! 🕯️", "Jangan biarkan kerja kerasmu hilang. Ayo login dan lakukan ritual penyulutan sekarang!", NotificationHelper.ID_REMINDER)
             }
             
-            // Cek juga kelewatan (diff logic dari StreakCheckWorker bisa digabung di sini agar terpusat)
-            checkMissedStreak(context, db)
+            if (pref.isStreakMissNotifEnabled) {
+                checkMissedStreak(context, db, pref)
+            }
         }
     }
 
-    private suspend fun checkMissedStreak(context: Context, db: AppDatabase) {
+    private suspend fun checkMissedStreak(context: Context, db: AppDatabase, pref: PreferenceManager) {
         val streakData = db.streakDao().getStreak().firstOrNull() ?: return
         if (streakData.lastDayId == 0L || streakData.isIgnitedToday) return
 
@@ -95,13 +92,13 @@ class NotificationReceiver : BroadcastReceiver() {
         val diff = (today - streakData.lastDayId).toInt()
 
         when {
-            diff == 2 -> showNotification(context, "streak_miss", "Masih Ada Peluang! 🔥", "Kamu kelewat 1 hari nih, tapi tenang! Masih ada peluang api menyala jika kamu memiliki protection. Yuk login! 🛡️", NotificationHelper.ID_STREAK_MISS)
-            diff == 6 -> showNotification(context, "streak_miss", "Sudah Lumayan Lama... ⏳", "Sudah 5 hari kamu gak mampir. Ayo kita ulangin lagi rutinitas baikmu, jangan sampai benar-benar padam! 🕯️", NotificationHelper.ID_STREAK_MISS)
-            diff >= 8 && (diff - 1) % 7 == 0 -> showNotification(context, "streak_miss", "Rindu Kehangatan Apimu ❄️", "Sudah seminggu lebih terlewatkan... HUMA merindukanmu. Mari nyalakan kembali semangatmu hari ini! ✨", NotificationHelper.ID_STREAK_MISS)
+            diff == 2 && pref.isStreakMiss1Enabled -> showNotification(context, pref, "streak_miss", "Masih Ada Peluang! 🔥", "Kamu kelewat 1 hari nih, tapi tenang! Masih ada peluang api menyala jika kamu memiliki protection. Yuk login! 🛡️", NotificationHelper.ID_STREAK_MISS)
+            diff == 6 && pref.isStreakMiss5Enabled -> showNotification(context, pref, "streak_miss", "Sudah Lumayan Lama... ⏳", "Sudah 5 hari kamu gak mampir. Ayo kita ulangin lagi rutinitas baikmu, jangan sampai benar-benar padam! 🕯️", NotificationHelper.ID_STREAK_MISS)
+            diff >= 8 && (diff - 1) % 7 == 0 && pref.isStreakMiss7Enabled -> showNotification(context, pref, "streak_miss", "Rindu Kehangatan Apimu ❄️", "Sudah seminggu lebih terlewatkan... HUMA merindukanmu. Mari nyalakan kembali semangatmu hari ini! ✨", NotificationHelper.ID_STREAK_MISS)
         }
     }
 
-    private fun showNotification(context: Context, type: String, title: String, message: String, notificationId: Int) {
+    private fun showNotification(context: Context, pref: PreferenceManager, type: String, title: String, message: String, notificationId: Int) {
         val rootIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -139,7 +136,7 @@ class NotificationReceiver : BroadcastReceiver() {
             else -> title
         }
 
-        val notification = NotificationCompat.Builder(context, "huma_reminder") 
+        val builder = NotificationCompat.Builder(context, "huma_reminder") 
             .setSmallIcon(R.drawable.logohumaicon) 
             .setLargeIcon(largeIcon)
             .setContentTitle(displayTitle)
@@ -152,12 +149,17 @@ class NotificationReceiver : BroadcastReceiver() {
             .addAction(0, "TUTUP", dismissPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setOngoing(true)
-            .setAutoCancel(false) 
-            .build()
+            .setOngoing(true) 
+            .setAutoCancel(false)
+
+        // Setting Suara & Getar
+        var defaults = 0
+        if (pref.isNotifSoundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
+        if (pref.isNotifVibrateEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
+        builder.setDefaults(defaults)
 
         try {
-            NotificationManagerCompat.from(context).notify(notificationId, notification)
+            NotificationManagerCompat.from(context).notify(notificationId, builder.build())
         } catch (e: SecurityException) {
         }
     }

@@ -11,6 +11,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.lifecycle.ViewModelProvider
@@ -61,6 +62,8 @@ import com.huma.app.ui.feature.CommitmentScreen
 import com.huma.app.ui.feature.AddCommitmentScreen
 import com.huma.app.viewmodel.CapsuleViewModel
 import com.huma.app.viewmodel.CommitmentViewModel
+import com.huma.app.ui.screen.settings.SettingsScreen
+import com.huma.app.data.local.PreferenceManager
 
 class MainActivity : ComponentActivity() {
 
@@ -120,9 +123,17 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            val prefManager = remember { PreferenceManager(context) }
             val navController: NavHostController = rememberNavController()
             val openNoteId = intent.getStringExtra("open_note_id")
             
+            // Simple Theme Handling
+            val darkTheme = when (prefManager.themeMode) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+
             LaunchedEffect(openNoteId) {
                 if (openNoteId != null) {
                     navController.navigate("notes_list")
@@ -134,68 +145,71 @@ class MainActivity : ComponentActivity() {
                 NoteData(entity.id, entity.title, entity.blocks, entity.date)
             }
 
-            Surface(color = MaterialTheme.colorScheme.background) {
-                NavHost(
-                    navController = navController,
-                    startDestination = "splash",
-                ) {
-                    composable("splash") { SplashScreen(navController) }
-                    composable("login") { LoginScreen(navController) }
-                    composable("dashboard") { DashboardScreen(navController, taskViewModel, commitmentViewModel) }
-                    composable("tasks") { TaskScreen(taskViewModel, "all", navController) }
-                    composable("tasks_today") { TaskScreen(taskViewModel, "today", navController) }
-                    composable("tasks_upcoming") { UpcomingTaskScreen(taskViewModel, navController) }
-                    composable("add_task/{type}") { backStackEntry ->
-                        val type = backStackEntry.arguments?.getString("type")
-                        AddTaskScreen(navController, taskViewModel, type == "upcoming")
-                    }
-                    composable("task_detail/{taskId}") { backStackEntry ->
-                        val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
-                        TaskDetailScreen(navController, taskId, taskViewModel)
-                    }
-                    composable("edit_task/{taskId}") { backStackEntry ->
-                        val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
-                        EditTaskScreen(taskId, navController, taskViewModel)
-                    }
-                    composable("focus") { FocusScreen(navController, taskViewModel) }
-                    composable("streak") { StreakScreen(streakViewModel) }
-                    composable("life_area") { LifeAreaScreen(navController, taskViewModel) }
-                    composable("notes_list") {
-                        NoteScreen(navController, globalNotes) { noteToDelete ->
-                            noteViewModel.deleteNote(context, noteToDelete)
+            MaterialTheme {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    NavHost(
+                        navController = navController,
+                        startDestination = "splash",
+                    ) {
+                        composable("splash") { SplashScreen(navController) }
+                        composable("login") { LoginScreen(navController) }
+                        composable("dashboard") { DashboardScreen(navController, taskViewModel, commitmentViewModel) }
+                        composable("settings") { SettingsScreen(navController) }
+                        composable("tasks") { TaskScreen(taskViewModel, "all", navController) }
+                        composable("tasks_today") { TaskScreen(taskViewModel, "today", navController) }
+                        composable("tasks_upcoming") { UpcomingTaskScreen(taskViewModel, navController) }
+                        composable("add_task/{type}") { backStackEntry ->
+                            val type = backStackEntry.arguments?.getString("type")
+                            AddTaskScreen(navController, taskViewModel, type == "upcoming")
                         }
-                    }
-                    composable("wheel") { WheelScreen() }
-                    composable("capsule") { TimeCapsuleScreen(capsuleViewModel) }
-                    composable("mind_games") { MindGamesScreen(navController = navController) }
-                    composable("commitments") { CommitmentScreen(navController = navController) }
-                    composable(
-                        route = "add_commitment?id={id}",
-                        arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = -1 })
-                    ) { backStackEntry ->
-                        val id = backStackEntry.arguments?.getInt("id") ?: -1
-                        AddCommitmentScreen(navController, if (id != -1) id else null)
-                    }
-                    composable(
-                        route = "note_editor?noteId={noteId}",
-                        arguments = listOf(navArgument("noteId") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        })
-                    ) { backStackEntry ->
-                        val noteId = backStackEntry.arguments?.getString("noteId")
-                        NoteEditorScreen(navController, noteId, globalNotes) { newNote ->
-                            noteViewModel.saveNote(context, newNote)
+                        composable("task_detail/{taskId}") { backStackEntry ->
+                            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
+                            TaskDetailScreen(navController, taskId, taskViewModel)
                         }
-                    }
-                    composable("analytics") { AnalyticsScreen(navController, taskViewModel) }
-                    composable(
-                        route = "area_detail/{areaName}",
-                        arguments = listOf(navArgument("areaName") { type = NavType.StringType })
-                    ) { backStackEntry ->
-                        val areaName = backStackEntry.arguments?.getString("areaName") ?: ""
-                        AreaDetailScreen(areaName, navController, taskViewModel)
+                        composable("edit_task/{taskId}") { backStackEntry ->
+                            val taskId = backStackEntry.arguments?.getString("taskId")?.toIntOrNull() ?: return@composable
+                            EditTaskScreen(taskId, navController, taskViewModel)
+                        }
+                        composable("focus") { FocusScreen(navController, taskViewModel) }
+                        composable("streak") { StreakScreen(streakViewModel) }
+                        composable("life_area") { LifeAreaScreen(navController, taskViewModel) }
+                        composable("notes_list") {
+                            NoteScreen(navController, globalNotes) { noteToDelete ->
+                                noteViewModel.deleteNote(context, noteToDelete)
+                            }
+                        }
+                        composable("wheel") { WheelScreen() }
+                        composable("capsule") { TimeCapsuleScreen(capsuleViewModel) }
+                        composable("mind_games") { MindGamesScreen(navController = navController) }
+                        composable("commitments") { CommitmentScreen(navController = navController) }
+                        composable(
+                            route = "add_commitment?id={id}",
+                            arguments = listOf(navArgument("id") { type = NavType.IntType; defaultValue = -1 })
+                        ) { backStackEntry ->
+                            val id = backStackEntry.arguments?.getInt("id") ?: -1
+                            AddCommitmentScreen(navController, if (id != -1) id else null)
+                        }
+                        composable(
+                            route = "note_editor?noteId={noteId}",
+                            arguments = listOf(navArgument("noteId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            })
+                        ) { backStackEntry ->
+                            val noteId = backStackEntry.arguments?.getString("noteId")
+                            NoteEditorScreen(navController, noteId, globalNotes) { newNote ->
+                                noteViewModel.saveNote(context, newNote)
+                            }
+                        }
+                        composable("analytics") { AnalyticsScreen(navController, taskViewModel) }
+                        composable(
+                            route = "area_detail/{areaName}",
+                            arguments = listOf(navArgument("areaName") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val areaName = backStackEntry.arguments?.getString("areaName") ?: ""
+                            AreaDetailScreen(areaName, navController, taskViewModel)
+                        }
                     }
                 }
             }

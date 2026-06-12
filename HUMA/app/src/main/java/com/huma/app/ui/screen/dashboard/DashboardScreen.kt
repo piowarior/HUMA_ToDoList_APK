@@ -46,6 +46,14 @@ import com.huma.app.viewmodel.CommitmentViewModel
 import com.huma.app.ui.feature.isStreakBroken
 import com.huma.app.ui.feature.LayeredFireIcon
 import java.text.SimpleDateFormat
+import kotlinx.coroutines.launch
+import com.huma.app.data.local.PreferenceManager
+import com.huma.app.ui.screen.settings.SettingsCategory
+import com.huma.app.ui.screen.settings.ThemeOption
+import com.huma.app.ui.screen.settings.SwitchOption
+import com.huma.app.ui.screen.settings.ClickableOption
+import com.huma.app.ui.screen.settings.InfoRow
+import com.huma.app.ui.screen.settings.getCacheSize
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -59,66 +67,150 @@ fun DashboardScreen(
     val commitments by commitmentViewModel.allCommitments.collectAsState()
     var showDoneTasks by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    
+    // State untuk Sidebar
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val prefManager = remember { PreferenceManager(context) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF6F7FB))
-            .verticalScroll(rememberScrollState())
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxHeight().width(320.dp),
+                drawerContainerColor = Color(0xFFF6F7FB)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Pengaturan",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    SettingsCategory(title = "🌙 Tema") {
+                        ThemeOption("Light Mode", prefManager.themeMode == 1) { prefManager.themeMode = 1 }
+                        ThemeOption("Dark Mode", prefManager.themeMode == 2) { prefManager.themeMode = 2 }
+                        ThemeOption("System Default", prefManager.themeMode == 0) { prefManager.themeMode = 0 }
+                    }
+
+                    SettingsCategory(title = "🔔 Notifikasi") {
+                        SwitchOption("Aktifkan Notifikasi", prefManager.isNotifEnabled) { prefManager.isNotifEnabled = it }
+                        if (prefManager.isNotifEnabled) {
+                            SwitchOption("Suara", prefManager.isNotifSoundEnabled) { prefManager.isNotifSoundEnabled = it }
+                            SwitchOption("Getar", prefManager.isNotifVibrateEnabled) { prefManager.isNotifVibrateEnabled = it }
+                            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                            SwitchOption("Greeting Pagi", prefManager.isGreetingNotifEnabled) { prefManager.isGreetingNotifEnabled = it }
+                            SwitchOption("Streak Harian", prefManager.isStreakNotifEnabled) { prefManager.isStreakNotifEnabled = it }
+                            Text("Pengingat Streak Miss:", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
+                            SwitchOption("Terlewat 1 Hari", prefManager.isStreakMiss1Enabled) { prefManager.isStreakMiss1Enabled = it }
+                            SwitchOption("Terlewat 5 Hari", prefManager.isStreakMiss5Enabled) { prefManager.isStreakMiss5Enabled = it }
+                            SwitchOption("Terlewat 7 Hari", prefManager.isStreakMiss7Enabled) { prefManager.isStreakMiss7Enabled = it }
+                        }
+                    }
+
+                    SettingsCategory(title = "🌐 Bahasa") {
+                        ThemeOption("Indonesia", prefManager.language == "in") { prefManager.language = "in" }
+                        ThemeOption("English", prefManager.language == "en") { prefManager.language = "en" }
+                    }
+
+                    SettingsCategory(title = "📍 Lokasi") {
+                        SwitchOption("Aktifkan Akses Lokasi", false) { }
+                        ClickableOption("Akurasi Lokasi", Icons.Default.GpsFixed) { }
+                    }
+
+                    SettingsCategory(title = "💾 Penyimpanan") {
+                        ClickableOption("Hapus Cache", Icons.Default.DeleteSweep) { context.cacheDir.deleteRecursively() }
+                        Text("Cache: ${getCacheSize(context)}", fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
+                    }
+
+                    SettingsCategory(title = "🔒 Privasi") {
+                        ClickableOption("Kebijakan Privasi", Icons.Default.PrivacyTip) { }
+                        ClickableOption("Izin Aplikasi", Icons.Default.Security) { }
+                    }
+
+                    SettingsCategory(title = "ℹ️ Tentang Aplikasi") {
+                        InfoRow("Versi", "1.0.0")
+                        InfoRow("Developer", "HUMA Team")
+                    }
+
+                    SettingsCategory(title = "🆘 Bantuan") {
+                        ClickableOption("FAQ", Icons.Default.QuestionAnswer) { }
+                        ClickableOption("Hubungi Developer", Icons.Default.Email) { }
+                        ClickableOption("Laporkan Bug", Icons.Default.BugReport) { }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+                }
+            }
+        }
     ) {
-        HeaderSection()
-        Spacer(Modifier.height(16.dp))
-        
-        DailyCommitmentSection(
-            commitments = commitments,
-            onOpen = { navController.navigate("commitments") },
-            onAddNew = { navController.navigate("add_commitment") }
-        )
-
-        Spacer(Modifier.height(22.dp))
-        FeatureSlider(navController)
-        Spacer(Modifier.height(26.dp))
-        QuickMenu(navController)
-        Spacer(Modifier.height(28.dp))
-        
-        TaskSection(
-            title = "Tasks Today",
-            tasks = todayTasks,
-            onAddClick = { navController.navigate("add_task/today") },
-            onSeeAll = { navController.navigate("tasks_today") },
-            onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") },
-            onToggleDone = { task -> taskViewModel.toggleTaskCompletion(context, task) }
-        )
-        Spacer(Modifier.height(24.dp))
-        UpcomingPreviewSection(
-            groupedTasks = upcomingGrouped,
-            onAddClick = { navController.navigate("add_task/upcoming") },
-            onSeeAll = { navController.navigate("tasks_upcoming") },
-            onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") },
-            onToggleDone = { task -> taskViewModel.toggleTaskCompletion(context, task) }
-        )
-        Spacer(Modifier.height(80.dp))
-        Text(
-            text = if (!showDoneTasks) "See all done tasks →" else "Hide done tasks ↑",
-            color = Color(0xFF6C63FF),
+        Column(
             modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .clickable { showDoneTasks = !showDoneTasks }
-        )
-        Spacer(Modifier.height(12.dp))
-        AnimatedVisibility(visible = showDoneTasks) {
-            DoneTasksSection(
-                groupedTasks = taskViewModel.doneTasks.collectAsState().value,
-                onRestore = { task -> taskViewModel.toggleTaskCompletion(context, task) },
-                onDelete = { task -> taskViewModel.deleteTask(context,task) }
+                .fillMaxSize()
+                .background(Color(0xFFF6F7FB))
+                .verticalScroll(rememberScrollState())
+        ) {
+            HeaderSection(onMenuClick = { scope.launch { drawerState.open() } })
+            Spacer(Modifier.height(16.dp))
+
+            DailyCommitmentSection(
+                commitments = commitments,
+                onOpen = { navController.navigate("commitments") },
+                onAddNew = { navController.navigate("add_commitment") }
             )
+
+            Spacer(Modifier.height(22.dp))
+            FeatureSlider(navController)
+            Spacer(Modifier.height(26.dp))
+            QuickMenu(navController)
+            Spacer(Modifier.height(28.dp))
+
+            TaskSection(
+                title = "Tasks Today",
+                tasks = todayTasks,
+                onAddClick = { navController.navigate("add_task/today") },
+                onSeeAll = { navController.navigate("tasks_today") },
+                onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") },
+                onToggleDone = { task -> taskViewModel.toggleTaskCompletion(context, task) }
+            )
+            Spacer(Modifier.height(24.dp))
+            UpcomingPreviewSection(
+                groupedTasks = upcomingGrouped,
+                onAddClick = { navController.navigate("add_task/upcoming") },
+                onSeeAll = { navController.navigate("tasks_upcoming") },
+                onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") },
+                onToggleDone = { task -> taskViewModel.toggleTaskCompletion(context, task) }
+            )
+            Spacer(Modifier.height(80.dp))
+            Text(
+                text = if (!showDoneTasks) "See all done tasks →" else "Hide done tasks ↑",
+                color = Color(0xFF6C63FF),
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .clickable { showDoneTasks = !showDoneTasks }
+            )
+            Spacer(Modifier.height(12.dp))
+            AnimatedVisibility(visible = showDoneTasks) {
+                DoneTasksSection(
+                    groupedTasks = taskViewModel.doneTasks.collectAsState().value,
+                    onRestore = { task -> taskViewModel.toggleTaskCompletion(context, task) },
+                    onDelete = { task -> taskViewModel.deleteTask(context,task) }
+                )
+            }
         }
     }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HeaderSection() {
+fun HeaderSection(onMenuClick: () -> Unit) {
     val today = LocalDate.now()
     val dayName = today.format(DateTimeFormatter.ofPattern("EEEE", Locale("id", "ID")))
     val fullDate = today.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID")))
@@ -130,6 +222,21 @@ fun HeaderSection() {
             .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
             .background(Brush.verticalGradient(listOf(Color(0xFF87CEEB), Color(0x8CE4FF))))
     ) {
+        // Logo / Settings Button di Pojok Kanan Atas
+        IconButton(
+            onClick = onMenuClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Pengaturan",
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+
         // Decorative Half Circle
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawArc(
@@ -154,7 +261,7 @@ fun HeaderSection() {
             Spacer(Modifier.height(8.dp))
             Text("Hi, Human! 👋", color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Light)
             Text("Make Every\nDay Count", color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, lineHeight = 40.sp)
-            
+
             Spacer(Modifier.height(16.dp))
             Surface(
                 color = Color(0xFF37474F).copy(alpha = 0.08f),
@@ -215,7 +322,6 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
         Box(modifier = Modifier.fillMaxSize().background(
             Brush.verticalGradient(listOf(Color.White, Color(0xFFFFF3E0)))
         )) {
-            // Watermark Api Berlayer (TETAP OREN)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -268,7 +374,7 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
                         }
                         Box(
                             modifier = Modifier
-                                .width(65.dp) // Fixed width to prevent layout jump
+                                .width(65.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isBroken) Color.Red.copy(alpha = 0.1f) else if (isDoneToday) Color(0xFFE8F5E9) else Color(0xFFF0F0F0))
                                 .padding(vertical = 4.dp),

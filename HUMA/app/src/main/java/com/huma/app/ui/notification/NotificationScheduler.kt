@@ -15,7 +15,6 @@ object NotificationScheduler {
 
     /**
      * Menjadwalkan semua notifikasi rutin (Greeting & Streak).
-     * Dipanggil saat aplikasi dibuka atau saat HP reboot.
      */
     fun scheduleAll(context: Context) {
         scheduleDailyGreeting(context, forceNextDay = false)
@@ -28,7 +27,6 @@ object NotificationScheduler {
     fun scheduleDailyGreeting(context: Context, forceNextDay: Boolean = false) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         
-        // Cek apakah sudah terjadwal (agar tidak gonta-ganti jam setiap buka APK)
         if (!forceNextDay) {
             val checkIntent = Intent(context, NotificationReceiver::class.java).apply {
                 putExtra("type", "greeting")
@@ -37,10 +35,9 @@ object NotificationScheduler {
                 context, REQ_GREETING, checkIntent,
                 PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
             )
-            if (pending != null) return // Sudah ada jadwal, biarkan saja.
+            if (pending != null) return
         }
 
-        // Pilih jam acak antara jam 6 sampai jam 11 pagi
         val randomHour = Random.nextInt(6, 12)
         val randomMinute = Random.nextInt(0, 60)
 
@@ -50,7 +47,6 @@ object NotificationScheduler {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
             
-            // Jika sudah lewat jamnya hari ini, atau dipaksa buat besok (setelah trigger)
             if (forceNextDay || timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
@@ -62,8 +58,7 @@ object NotificationScheduler {
                 "Halo, Human! ☕" to "Kopi sudah siap, semangat juga harus siap. Apa goalsmu hari ini?",
                 "Waktunya Bangun! 🌈" to "Dunia menunggumu. Jangan lupa tersenyum dan mulai ritual pagimu.",
                 "Hey! ✨" to "Hari ini adalah kesempatan baru untuk menjadi versi terbaikmu. Yuk fokus!",
-                "Semangat Pagi! 🔋" to "Energi baru, semangat baru. Jangan biarkan hari ini berlalu tanpa arti.",
-                "Rise and Shine! 💎" to "Setiap detik berharga. Mari kita susun rencana hebat untuk hari ini."
+                "Semangat Pagi! 🔋" to "Energi baru, semangat baru. Jangan biarkan hari ini berlalu tanpa arti."
             ).random()
             
             putExtra("title", greetings.first)
@@ -82,7 +77,6 @@ object NotificationScheduler {
 
     /**
      * 2️⃣ Daily Streak Reminder - Wajib muncul sehari sekali jika belum nyala.
-     * Dijadwalkan muncul jam 18:30 (Sore/Malam) sebagai pengingat utama.
      */
     fun scheduleDailyStreakReminder(context: Context, forceNextDay: Boolean = false) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager

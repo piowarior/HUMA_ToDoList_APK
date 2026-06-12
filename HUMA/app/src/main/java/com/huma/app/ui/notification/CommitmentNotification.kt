@@ -10,10 +10,6 @@ import java.util.*
 
 object CommitmentNotification {
 
-    /**
-     * 🔥 Fungsi Abadi: Menjadwalkan notifikasi harian untuk Commitment.
-     * Menggunakan setExactAndAllowWhileIdle agar "Mutlak Wajib" muncul tepat waktu.
-     */
     fun scheduleNotifications(context: Context, commitment: CommitmentEntity) {
         if (!commitment.isNotificationEnabled) {
             cancelNotifications(context, commitment)
@@ -25,12 +21,14 @@ object CommitmentNotification {
             if (parts.size == 2) {
                 val hour = parts[0].toIntOrNull() ?: return@forEachIndexed
                 val minute = parts[1].toIntOrNull() ?: return@forEachIndexed
-                
                 scheduleExactAlarm(context, commitment.id, commitment.title, index, hour, minute)
             }
         }
     }
 
+    /**
+     * 🔥 Fungsi ini harus PUBLIC agar bisa diakses dari NotificationReceiver
+     */
     fun scheduleExactAlarm(
         context: Context,
         commitmentId: Int,
@@ -50,7 +48,6 @@ object CommitmentNotification {
         }
 
         val requestCode = commitmentId * 100 + timeIndex
-
         val pendingIntent = PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -63,24 +60,15 @@ object CommitmentNotification {
             set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            
             if (timeInMillis <= System.currentTimeMillis()) {
                 add(Calendar.DAY_OF_YEAR, 1)
             }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
         } else {
-            alarmManager.setExact(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
+            alarmManager.setExact(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
         }
     }
 
