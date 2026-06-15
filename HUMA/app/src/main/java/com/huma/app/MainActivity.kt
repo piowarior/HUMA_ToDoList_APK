@@ -8,12 +8,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -64,11 +64,15 @@ import com.huma.app.viewmodel.CapsuleViewModel
 import com.huma.app.viewmodel.CommitmentViewModel
 import com.huma.app.ui.screen.settings.SettingsScreen
 import com.huma.app.data.local.PreferenceManager
+import com.huma.app.ui.theme.HUMATheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> }
+
+    // Theme state — observable so Compose recomposes when changed from Settings
+    private val _themeMode = mutableIntStateOf(0)
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +110,10 @@ class MainActivity : ComponentActivity() {
 
         NotificationScheduler.scheduleAll(this)
 
+        // Initialize theme from preferences
+        val prefManager = PreferenceManager(this)
+        _themeMode.intValue = prefManager.themeMode
+
         val database = AppDatabase.getInstance(this)
         val repository = TaskRepository(database.taskDao())
 
@@ -123,12 +131,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
-            val prefManager = remember { PreferenceManager(context) }
+            val localPrefManager = remember { PreferenceManager(context) }
             val navController: NavHostController = rememberNavController()
             val openNoteId = intent.getStringExtra("open_note_id")
             
-            // Simple Theme Handling
-            val darkTheme = when (prefManager.themeMode) {
+            // Re-read theme from prefs on each recomposition triggered by settings change
+            val currentThemeMode = _themeMode.intValue
+            val darkTheme = when (currentThemeMode) {
                 1 -> false
                 2 -> true
                 else -> isSystemInDarkTheme()
@@ -145,16 +154,27 @@ class MainActivity : ComponentActivity() {
                 NoteData(entity.id, entity.title, entity.blocks, entity.date)
             }
 
-            MaterialTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
+            HUMATheme(darkTheme = darkTheme) {
+                Surface(color = androidx.compose.material3.MaterialTheme.colorScheme.background) {
                     NavHost(
                         navController = navController,
                         startDestination = "splash",
                     ) {
                         composable("splash") { SplashScreen(navController) }
                         composable("login") { LoginScreen(navController) }
-                        composable("dashboard") { DashboardScreen(navController, taskViewModel, commitmentViewModel) }
-                        composable("settings") { SettingsScreen(navController) }
+                        composable("dashboard") { 
+                            DashboardScreen(
+                                navController = navController,
+                                taskViewModel = taskViewModel,
+                                commitmentViewModel = commitmentViewModel,
+                                onThemeChanged = { newTheme ->
+                                    _themeMode.intValue = newTheme
+                                }
+                            )
+                        }
+                        composable("settings") { 
+                            SettingsScreen(navController)
+                        }
                         composable("tasks") { TaskScreen(taskViewModel, "all", navController) }
                         composable("tasks_today") { TaskScreen(taskViewModel, "today", navController) }
                         composable("tasks_upcoming") { UpcomingTaskScreen(taskViewModel, navController) }
@@ -214,5 +234,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-read theme preference when returning from settings or other activities
+        val prefManager = PreferenceManager(this)
+        _themeMode.intValue = prefManager.themeMode
     }
 }

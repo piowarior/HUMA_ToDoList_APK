@@ -54,13 +54,21 @@ import com.huma.app.ui.screen.settings.SwitchOption
 import com.huma.app.ui.screen.settings.ClickableOption
 import com.huma.app.ui.screen.settings.InfoRow
 import com.huma.app.ui.screen.settings.getCacheSize
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.huma.app.ui.notification.NotificationScheduler
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DashboardScreen(
     navController: NavController,
     taskViewModel: TaskViewModel,
-    commitmentViewModel: CommitmentViewModel
+    commitmentViewModel: CommitmentViewModel,
+    onThemeChanged: (Int) -> Unit
 ) {
     val todayTasks by taskViewModel.todayTasks.collectAsState()
     val upcomingGrouped by taskViewModel.upcomingGrouped.collectAsState()
@@ -73,12 +81,72 @@ fun DashboardScreen(
     val scope = rememberCoroutineScope()
     val prefManager = remember { PreferenceManager(context) }
 
+    // State Lokal untuk UI Responsif Drawer Settings
+    var themeModeState by remember { mutableIntStateOf(prefManager.themeMode) }
+    var isNotifEnabledState by remember { mutableStateOf(prefManager.isNotifEnabled) }
+    var isNotifSoundEnabledState by remember { mutableStateOf(prefManager.isNotifSoundEnabled) }
+    var isNotifVibrateEnabledState by remember { mutableStateOf(prefManager.isNotifVibrateEnabled) }
+    var isGreetingNotifEnabledState by remember { mutableStateOf(prefManager.isGreetingNotifEnabled) }
+    var isStreakNotifEnabledState by remember { mutableStateOf(prefManager.isStreakNotifEnabled) }
+    var isStreakMiss1EnabledState by remember { mutableStateOf(prefManager.isStreakMiss1Enabled) }
+    var isStreakMiss5EnabledState by remember { mutableStateOf(prefManager.isStreakMiss5Enabled) }
+    var isStreakMiss7EnabledState by remember { mutableStateOf(prefManager.isStreakMiss7Enabled) }
+    var languageState by remember { mutableStateOf(prefManager.language) }
+    var cacheSizeState by remember { mutableStateOf(getCacheSize(context)) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showFaqDialog by remember { mutableStateOf(false) }
+
+    val isDark = when (themeModeState) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
+
+    // Privacy Policy Dialog
+    if (showPrivacyDialog) {
+        AlertDialog(
+            onDismissRequest = { showPrivacyDialog = false },
+            title = { Text(if (languageState == "en") "Privacy Policy" else "Kebijakan Privasi") },
+            text = { Text(if (languageState == "en") "Privacy policy is under construction. It will be available in the next update." else "Kebijakan privasi sedang dalam proses penyusunan. Akan segera tersedia di update berikutnya.") },
+            confirmButton = {
+                TextButton(onClick = { showPrivacyDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // FAQ Dialog
+    if (showFaqDialog) {
+        AlertDialog(
+            onDismissRequest = { showFaqDialog = false },
+            title = { Text("FAQ") },
+            text = {
+                Column {
+                    Text(if (languageState == "en") "Q: How to use Streak?" else "Q: Bagaimana cara menggunakan Streak?", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(if (languageState == "en") "A: Open the Streak menu, swipe the flint stone, write your commitment, and ignite it!" else "A: Buka menu Streak, gesek batu api, tulis niatmu, dan nyalakan!", fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(if (languageState == "en") "Q: Notifications not showing?" else "Q: Notifikasi tidak muncul?", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(if (languageState == "en") "A: Make sure notifications are enabled in Settings and allow HUMA notifications in system settings." else "A: Pastikan notifikasi diaktifkan di Settings dan izinkan notifikasi HUMA di pengaturan sistem.", fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(if (languageState == "en") "Q: What is Protection in Streak?" else "Q: Apa itu Protection di Streak?", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(if (languageState == "en") "A: Protection is a streak shield obtained after 25 consecutive days. It protects you from losing your streak if you miss 1 day." else "A: Protection adalah perlindungan streak yang didapat setelah 25 hari berturut-turut. Melindungimu dari kehilangan streak jika melewatkan 1 hari.", fontSize = 13.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFaqDialog = false }) {
+                    Text(if (languageState == "en") "Close" else "Tutup")
+                }
+            }
+        )
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.fillMaxHeight().width(320.dp),
-                drawerContainerColor = Color(0xFFF6F7FB)
+                drawerContainerColor = if (isDark) Color(0xFF1E1E1E) else Color(0xFFF6F7FB)
             ) {
                 Column(
                     modifier = Modifier
@@ -88,62 +156,159 @@ fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        "Pengaturan",
+                        if (languageState == "en") "Settings" else "Pengaturan",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black,
+                        color = if (isDark) Color.White else Color.Black,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
 
-                    SettingsCategory(title = "🌙 Tema") {
-                        ThemeOption("Light Mode", prefManager.themeMode == 1) { prefManager.themeMode = 1 }
-                        ThemeOption("Dark Mode", prefManager.themeMode == 2) { prefManager.themeMode = 2 }
-                        ThemeOption("System Default", prefManager.themeMode == 0) { prefManager.themeMode = 0 }
-                    }
-
-                    SettingsCategory(title = "🔔 Notifikasi") {
-                        SwitchOption("Aktifkan Notifikasi", prefManager.isNotifEnabled) { prefManager.isNotifEnabled = it }
-                        if (prefManager.isNotifEnabled) {
-                            SwitchOption("Suara", prefManager.isNotifSoundEnabled) { prefManager.isNotifSoundEnabled = it }
-                            SwitchOption("Getar", prefManager.isNotifVibrateEnabled) { prefManager.isNotifVibrateEnabled = it }
-                            HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                            SwitchOption("Greeting Pagi", prefManager.isGreetingNotifEnabled) { prefManager.isGreetingNotifEnabled = it }
-                            SwitchOption("Streak Harian", prefManager.isStreakNotifEnabled) { prefManager.isStreakNotifEnabled = it }
-                            Text("Pengingat Streak Miss:", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
-                            SwitchOption("Terlewat 1 Hari", prefManager.isStreakMiss1Enabled) { prefManager.isStreakMiss1Enabled = it }
-                            SwitchOption("Terlewat 5 Hari", prefManager.isStreakMiss5Enabled) { prefManager.isStreakMiss5Enabled = it }
-                            SwitchOption("Terlewat 7 Hari", prefManager.isStreakMiss7Enabled) { prefManager.isStreakMiss7Enabled = it }
+                    SettingsCategory(title = if (languageState == "en") "🌙 Theme" else "🌙 Tema") {
+                        ThemeOption(if (languageState == "en") "Light Mode" else "Light Mode", themeModeState == 1) { 
+                            prefManager.themeMode = 1
+                            themeModeState = 1
+                            onThemeChanged(1)
+                        }
+                        ThemeOption(if (languageState == "en") "Dark Mode" else "Dark Mode", themeModeState == 2) { 
+                            prefManager.themeMode = 2
+                            themeModeState = 2
+                            onThemeChanged(2)
+                        }
+                        ThemeOption(if (languageState == "en") "System Default" else "System Default", themeModeState == 0) { 
+                            prefManager.themeMode = 0
+                            themeModeState = 0
+                            onThemeChanged(0)
                         }
                     }
 
-                    SettingsCategory(title = "🌐 Bahasa") {
-                        ThemeOption("Indonesia", prefManager.language == "in") { prefManager.language = "in" }
-                        ThemeOption("English", prefManager.language == "en") { prefManager.language = "en" }
+                    SettingsCategory(title = if (languageState == "en") "🔔 Notifications" else "🔔 Notifikasi") {
+                        SwitchOption(if (languageState == "en") "Enable Notifications" else "Aktifkan Notifikasi", isNotifEnabledState) {
+                            prefManager.isNotifEnabled = it
+                            isNotifEnabledState = it
+                            if (it) {
+                                NotificationScheduler.scheduleAll(context)
+                            } else {
+                                NotificationScheduler.cancelGreeting(context)
+                                NotificationScheduler.cancelStreakReminder(context)
+                            }
+                        }
+                        if (isNotifEnabledState) {
+                            SwitchOption(if (languageState == "en") "Sound" else "Suara", isNotifSoundEnabledState) {
+                                prefManager.isNotifSoundEnabled = it
+                                isNotifSoundEnabledState = it
+                            }
+                            SwitchOption(if (languageState == "en") "Vibrate" else "Getar", isNotifVibrateEnabledState) {
+                                prefManager.isNotifVibrateEnabled = it
+                                isNotifVibrateEnabledState = it
+                            }
+                            HorizontalDivider(Modifier.padding(vertical = 4.dp), color = if (isDark) Color.DarkGray else Color.LightGray)
+                            SwitchOption(if (languageState == "en") "Morning Greeting" else "Greeting Pagi", isGreetingNotifEnabledState) {
+                                prefManager.isGreetingNotifEnabled = it
+                                isGreetingNotifEnabledState = it
+                                if (it) {
+                                    NotificationScheduler.scheduleDailyGreeting(context)
+                                } else {
+                                    NotificationScheduler.cancelGreeting(context)
+                                }
+                            }
+                            SwitchOption(if (languageState == "en") "Daily Streak" else "Streak Harian", isStreakNotifEnabledState) {
+                                prefManager.isStreakNotifEnabled = it
+                                isStreakNotifEnabledState = it
+                                if (it) {
+                                    NotificationScheduler.scheduleDailyStreakReminder(context)
+                                } else {
+                                    NotificationScheduler.cancelStreakReminder(context)
+                                }
+                            }
+                            Text(if (languageState == "en") "Missed Streak Reminder:" else "Pengingat Streak Miss:", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(start = 8.dp, top = 4.dp))
+                            SwitchOption(if (languageState == "en") "1 Day Missed" else "Terlewat 1 Hari", isStreakMiss1EnabledState) {
+                                prefManager.isStreakMiss1Enabled = it
+                                isStreakMiss1EnabledState = it
+                            }
+                            SwitchOption(if (languageState == "en") "5 Days Missed" else "Terlewat 5 Hari", isStreakMiss5EnabledState) {
+                                prefManager.isStreakMiss5Enabled = it
+                                isStreakMiss5EnabledState = it
+                            }
+                            SwitchOption(if (languageState == "en") "7+ Days Missed" else "Terlewat 7+ Hari", isStreakMiss7EnabledState) {
+                                prefManager.isStreakMiss7Enabled = it
+                                isStreakMiss7EnabledState = it
+                            }
+                        }
                     }
 
-                    SettingsCategory(title = "📍 Lokasi") {
-                        SwitchOption("Aktifkan Akses Lokasi", false) { }
-                        ClickableOption("Akurasi Lokasi", Icons.Default.GpsFixed) { }
+                    SettingsCategory(title = if (languageState == "en") "🌐 Language" else "🌐 Bahasa") {
+                        ThemeOption("Indonesia", languageState == "in") {
+                            prefManager.language = "in"
+                            languageState = "in"
+                            val localeList = LocaleListCompat.forLanguageTags("in")
+                            AppCompatDelegate.setApplicationLocales(localeList)
+                        }
+                        ThemeOption("English", languageState == "en") {
+                            prefManager.language = "en"
+                            languageState = "en"
+                            val localeList = LocaleListCompat.forLanguageTags("en")
+                            AppCompatDelegate.setApplicationLocales(localeList)
+                        }
                     }
 
-                    SettingsCategory(title = "💾 Penyimpanan") {
-                        ClickableOption("Hapus Cache", Icons.Default.DeleteSweep) { context.cacheDir.deleteRecursively() }
-                        Text("Cache: ${getCacheSize(context)}", fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp))
+                    SettingsCategory(title = if (languageState == "en") "📍 Location" else "📍 Lokasi") {
+                        SwitchOption(if (languageState == "en") "Enable Location Access" else "Aktifkan Akses Lokasi", false) { }
+                        ClickableOption(if (languageState == "en") "Location Accuracy" else "Akurasi Lokasi", Icons.Default.GpsFixed) { }
                     }
 
-                    SettingsCategory(title = "🔒 Privasi") {
-                        ClickableOption("Kebijakan Privasi", Icons.Default.PrivacyTip) { }
-                        ClickableOption("Izin Aplikasi", Icons.Default.Security) { }
+                    SettingsCategory(title = if (languageState == "en") "💾 Storage" else "💾 Penyimpanan") {
+                        ClickableOption(if (languageState == "en") "Clear Cache" else "Hapus Cache", Icons.Default.DeleteSweep) {
+                            context.cacheDir.deleteRecursively()
+                            cacheSizeState = getCacheSize(context)
+                            Toast.makeText(context, if (languageState == "en") "Cache cleared!" else "Cache berhasil dihapus!", Toast.LENGTH_SHORT).show()
+                        }
+                        Text("${if (languageState == "en") "Cache" else "Cache"}: $cacheSizeState", fontSize = 11.sp, color = Color.Gray, modifier = Modifier.padding(start = 8.dp))
                     }
 
-                    SettingsCategory(title = "ℹ️ Tentang Aplikasi") {
-                        InfoRow("Versi", "1.0.0")
-                        InfoRow("Developer", "HUMA Team")
+                    SettingsCategory(title = if (languageState == "en") "🔒 Privacy" else "🔒 Privasi") {
+                        ClickableOption(if (languageState == "en") "Privacy Policy" else "Kebijakan Privasi", Icons.Default.PrivacyTip) {
+                            showPrivacyDialog = true
+                        }
+                        ClickableOption(if (languageState == "en") "App Permissions" else "Izin Aplikasi", Icons.Default.Security) {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
                     }
 
-                    SettingsCategory(title = "🆘 Bantuan") {
-                        ClickableOption("FAQ", Icons.Default.QuestionAnswer) { }
-                        ClickableOption("Hubungi Developer", Icons.Default.Email) { }
-                        ClickableOption("Laporkan Bug", Icons.Default.BugReport) { }
+                    SettingsCategory(title = if (languageState == "en") "ℹ️ About Application" else "ℹ️ Tentang Aplikasi") {
+                        InfoRow(if (languageState == "en") "Version" else "Versi", "1.0.0")
+                        InfoRow(if (languageState == "en") "Developer" else "Developer", "HUMA Team")
+                    }
+
+                    SettingsCategory(title = if (languageState == "en") "🆘 Help" else "🆘 Bantuan") {
+                        ClickableOption("FAQ", Icons.Default.QuestionAnswer) {
+                            showFaqDialog = true
+                        }
+                        ClickableOption(if (languageState == "en") "Contact Developer" else "Hubungi Developer", Icons.Default.Email) {
+                            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:huma.team@gmail.com")
+                                putExtra(Intent.EXTRA_SUBJECT, "HUMA App - Feedback")
+                            }
+                            try {
+                                context.startActivity(emailIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        ClickableOption(if (languageState == "en") "Report Bug" else "Laporkan Bug", Icons.Default.BugReport) {
+                            val bugIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:huma.team@gmail.com")
+                                putExtra(Intent.EXTRA_SUBJECT, "HUMA App - Bug Report")
+                                putExtra(Intent.EXTRA_TEXT, if (languageState == "en") "Please describe the bug:\n\n" else "Deskripsikan bug yang ditemukan:\n\n")
+                            }
+                            try {
+                                context.startActivity(bugIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(32.dp))
@@ -154,13 +319,14 @@ fun DashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF6F7FB))
+                .background(if (isDark) Color(0xFF121212) else Color(0xFFF6F7FB))
                 .verticalScroll(rememberScrollState())
         ) {
-            HeaderSection(onMenuClick = { scope.launch { drawerState.open() } })
+            HeaderSection(isDark = isDark, onMenuClick = { scope.launch { drawerState.open() } })
             Spacer(Modifier.height(16.dp))
 
             DailyCommitmentSection(
+                isDark = isDark,
                 commitments = commitments,
                 onOpen = { navController.navigate("commitments") },
                 onAddNew = { navController.navigate("add_commitment") }
@@ -169,7 +335,7 @@ fun DashboardScreen(
             Spacer(Modifier.height(22.dp))
             FeatureSlider(navController)
             Spacer(Modifier.height(26.dp))
-            QuickMenu(navController)
+            QuickMenu(navController, isDark = isDark)
             Spacer(Modifier.height(28.dp))
 
             TaskSection(
@@ -191,7 +357,7 @@ fun DashboardScreen(
             Spacer(Modifier.height(80.dp))
             Text(
                 text = if (!showDoneTasks) "See all done tasks →" else "Hide done tasks ↑",
-                color = Color(0xFF6C63FF),
+                color = if (isDark) Color(0xFFFFB74D) else Color(0xFF6C63FF),
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
                     .clickable { showDoneTasks = !showDoneTasks }
@@ -210,7 +376,7 @@ fun DashboardScreen(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun HeaderSection(onMenuClick: () -> Unit) {
+fun HeaderSection(isDark: Boolean, onMenuClick: () -> Unit) {
     val today = LocalDate.now()
     val dayName = today.format(DateTimeFormatter.ofPattern("EEEE", Locale("id", "ID")))
     val fullDate = today.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale("id", "ID")))
@@ -264,15 +430,15 @@ fun HeaderSection(onMenuClick: () -> Unit) {
 
             Spacer(Modifier.height(16.dp))
             Surface(
-                color = Color(0xFF37474F).copy(alpha = 0.08f),
+                color = if (isDark) Color(0xFF37474F).copy(alpha = 0.2f) else Color(0xFF37474F).copy(alpha = 0.08f),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFF37474F).copy(alpha = 0.2f)),
+                border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF37474F).copy(alpha = 0.2f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.FormatQuote, null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.FormatQuote, null, tint = if (isDark) Color.LightGray else Color(0xFF64748B), modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Success is the sum of small efforts.", color = Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                    Text("Success is the sum of small efforts.", color = if (isDark) Color.LightGray else Color(0xFF64748B), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                 }
             }
         }
@@ -281,13 +447,14 @@ fun HeaderSection(onMenuClick: () -> Unit) {
 
 @Composable
 fun DailyCommitmentSection(
+    isDark: Boolean,
     commitments: List<CommitmentEntity>,
     onOpen: () -> Unit,
     onAddNew: () -> Unit
 ) {
     Column(Modifier.padding(horizontal = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Commitment 🔥", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+            Text("Commitment 🔥", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = if (isDark) Color.White else Color.Black)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onOpen() }) {
                 Text("See All", color = Color(0xFFFFA726), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color(0xFFFFA726), modifier = Modifier.size(14.dp))
@@ -296,9 +463,9 @@ fun DailyCommitmentSection(
         Spacer(Modifier.height(16.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(end = 16.dp)) {
             items(commitments) { commitment ->
-                CommitmentFlameCardDashboard(commitment = commitment, onClick = onOpen)
+                CommitmentFlameCardDashboard(isDark = isDark, commitment = commitment, onClick = onOpen)
             }
-            item { AddCommitmentCardDashboard(onClick = onAddNew) }
+            item { AddCommitmentCardDashboard(isDark = isDark, onClick = onAddNew) }
         }
         Spacer(Modifier.height(12.dp))
         Text("Konsistensi adalah kunci perubahan besar 🧡✨", color = Color.Gray, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
@@ -306,7 +473,7 @@ fun DailyCommitmentSection(
 }
 
 @Composable
-fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Unit) {
+fun CommitmentFlameCardDashboard(isDark: Boolean, commitment: CommitmentEntity, onClick: () -> Unit) {
     val orenColor = Color(0xFFFFA726)
     val actualElemColor = Color(android.graphics.Color.parseColor(commitment.colorHex))
     val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -316,11 +483,14 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
     Card(
         modifier = Modifier.width(195.dp).height(155.dp).clickable { onClick() },
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isBroken) 1.dp else 8.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color.White, Color(0xFFFFF3E0)))
+            Brush.verticalGradient(
+                if (isDark) listOf(Color(0xFF1E1E1E), Color(0xFF2D2010)) 
+                else listOf(Color.White, Color(0xFFFFF3E0))
+            )
         )) {
             Box(
                 modifier = Modifier
@@ -353,7 +523,7 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
                         )
                     }
                     Spacer(Modifier.width(10.dp))
-                    Text(commitment.title, fontWeight = FontWeight.ExtraBold, maxLines = 1, fontSize = 16.sp, color = Color(0xFF2D3436))
+                    Text(commitment.title, fontWeight = FontWeight.ExtraBold, maxLines = 1, fontSize = 16.sp, color = if (isDark) Color.White else Color(0xFF2D3436))
                 }
 
                 Column {
@@ -366,21 +536,30 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                             List(5) { index ->
-                                val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -(4 - index)) }
-                                val dateStr = sdf.format(cal.time)
-                                val isComp = commitment.completedDays.contains(dateStr)
-                                Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(if (isComp) actualElemColor else Color.LightGray.copy(alpha = 0.3f)))
+                                    val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -(4 - index)) }
+                                    val dateStr = sdf.format(cal.time)
+                                    val isComp = commitment.completedDays.contains(dateStr)
+                                    Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(if (isComp) actualElemColor else Color.LightGray.copy(alpha = 0.3f)))
                             }
                         }
                         Box(
                             modifier = Modifier
                                 .width(65.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isBroken) Color.Red.copy(alpha = 0.1f) else if (isDoneToday) Color(0xFFE8F5E9) else Color(0xFFF0F0F0))
+                                .background(
+                                    if (isBroken) Color.Red.copy(alpha = 0.1f) 
+                                    else if (isDoneToday) (if (isDark) Color(0xFF1B5E20) else Color(0xFFE8F5E9)) 
+                                    else (if (isDark) Color.DarkGray else Color(0xFFF0F0F0))
+                                )
                                 .padding(vertical = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = if (isBroken) "BROKEN" else if (isDoneToday) "DONE" else "ACTION", color = if (isBroken) Color.Red else if (isDoneToday) Color(0xFF2E7D32) else Color.Gray, fontWeight = FontWeight.Black, fontSize = 9.sp)
+                            Text(
+                                text = if (isBroken) "BROKEN" else if (isDoneToday) "DONE" else "ACTION", 
+                                color = if (isBroken) Color.Red else if (isDoneToday) (if (isDark) Color(0xFF81C784) else Color(0xFF2E7D32)) else Color.Gray, 
+                                fontWeight = FontWeight.Black, 
+                                fontSize = 9.sp
+                            )
                         }
                     }
                 }
@@ -390,8 +569,13 @@ fun CommitmentFlameCardDashboard(commitment: CommitmentEntity, onClick: () -> Un
 }
 
 @Composable
-fun AddCommitmentCardDashboard(onClick: () -> Unit) {
-    Card(modifier = Modifier.width(100.dp).height(155.dp).clickable { onClick() }, shape = RoundedCornerShape(28.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.4f))) {
+fun AddCommitmentCardDashboard(isDark: Boolean, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.width(100.dp).height(155.dp).clickable { onClick() }, 
+        shape = RoundedCornerShape(28.dp), 
+        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1E1E1E) else Color.White), 
+        border = BorderStroke(1.dp, if (isDark) Color.DarkGray.copy(alpha = 0.4f) else Color.LightGray.copy(alpha = 0.4f))
+    ) {
         Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.AddCircle, null, tint = Color(0xFFFFA726), modifier = Modifier.size(32.dp))
             Text("NEW", color = Color(0xFFFFA726), fontWeight = FontWeight.Black, fontSize = 12.sp)
@@ -409,24 +593,26 @@ fun FeatureSlider(navController: NavController) {
 }
 
 @Composable
-fun QuickMenu(navController: NavController) {
-    Text("Quick Access", modifier = Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.Bold)
+fun QuickMenu(navController: NavController, isDark: Boolean) {
+    Text("Quick Access", modifier = Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.Bold, color = if (isDark) Color.White else Color.Black)
     val scrollState = rememberScrollState()
     Spacer(Modifier.height(12.dp))
     Row(modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-        MenuIconAnimated("Focus", Icons.Default.CenterFocusStrong) { navController.navigate("focus") }
-        MenuIconAnimated("Streak", Icons.Default.LocalFireDepartment) { navController.navigate("streak") }
-        MenuIconAnimated("Notes", Icons.Default.Description) { navController.navigate("notes_list") }
-        MenuIconAnimated("Life", Icons.Default.Dashboard) { navController.navigate("life_area") }
-        MenuIconAnimated("Stats", Icons.Default.BarChart) { navController.navigate("analytics") }
+        MenuIconAnimated("Focus", Icons.Default.CenterFocusStrong, isDark) { navController.navigate("focus") }
+        MenuIconAnimated("Streak", Icons.Default.LocalFireDepartment, isDark) { navController.navigate("streak") }
+        MenuIconAnimated("Notes", Icons.Default.Description, isDark) { navController.navigate("notes_list") }
+        MenuIconAnimated("Life", Icons.Default.Dashboard, isDark) { navController.navigate("life_area") }
+        MenuIconAnimated("Stats", Icons.Default.BarChart, isDark) { navController.navigate("analytics") }
     }
 }
 
 @Composable
-fun MenuIconAnimated(title: String, icon: ImageVector, onClick: () -> Unit) {
+fun MenuIconAnimated(title: String, icon: ImageVector, isDark: Boolean, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }) {
-        Box(modifier = Modifier.size(56.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color(0xFF6C63FF)) }
+        Box(modifier = Modifier.size(56.dp).background(if (isDark) Color(0xFF1E1E1E) else Color.White, CircleShape), contentAlignment = Alignment.Center) { 
+            Icon(icon, null, tint = if (isDark) Color(0xFFFFB74D) else Color(0xFF6C63FF)) 
+        }
         Spacer(Modifier.height(6.dp))
-        Text(title)
+        Text(title, color = if (isDark) Color.White else Color.Black)
     }
 }

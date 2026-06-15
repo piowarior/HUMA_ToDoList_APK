@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Huma</string>
+
+    <string name="widget_note_desc">
+        Display notes directly on home screen
+    </string>
+
+    <string name="widget_task_desc">
+        Display Task Today Section
+    </string>
+
+</resources>

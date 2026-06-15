@@ -4,11 +4,19 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.huma.app.data.local.PreferenceManager
 import java.util.Calendar
 import kotlin.random.Random
 
 class RandomGreetingWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        val pref = PreferenceManager(applicationContext)
+
+        // Cek master + greeting toggle
+        if (!pref.isNotifEnabled || !pref.isGreetingNotifEnabled) {
+            return Result.success()
+        }
+
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         

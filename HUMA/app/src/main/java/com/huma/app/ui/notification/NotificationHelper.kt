@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.huma.app.MainActivity
 import com.huma.app.R
+import com.huma.app.data.local.PreferenceManager
 import kotlin.random.Random
 
 object NotificationHelper {
@@ -45,6 +46,10 @@ object NotificationHelper {
         colorHex: String = "#6C63FF",
         category: String = NotificationCompat.CATEGORY_REMINDER
     ) {
+        // Cek master notification switch
+        val pref = PreferenceManager(context)
+        if (!pref.isNotifEnabled) return
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                     android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -68,7 +73,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notif = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.logohumaicon)
             .setContentTitle(title)
             .setContentText(message)
@@ -80,10 +85,19 @@ object NotificationHelper {
             .setContentIntent(pendingIntent)
             .setOngoing(true) // 🔥 GAK BISA DI-SWIPE
             .setAutoCancel(false) // 🔥 Gak hilang saat diklik otomatis
-            .setDefaults(Notification.DEFAULT_ALL)
             .addAction(0, "TUTUP", dismissPendingIntent) // Tombol Close
-            .build()
 
-        NotificationManagerCompat.from(context).notify(notifId, notif)
+        // Respek setting suara & getar dari PreferenceManager
+        var defaults = 0
+        if (pref.isNotifSoundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
+        if (pref.isNotifVibrateEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
+        if (defaults == 0) {
+            // Jika keduanya off, silent notification
+            builder.setSilent(true)
+        } else {
+            builder.setDefaults(defaults)
+        }
+
+        NotificationManagerCompat.from(context).notify(notifId, builder.build())
     }
 }

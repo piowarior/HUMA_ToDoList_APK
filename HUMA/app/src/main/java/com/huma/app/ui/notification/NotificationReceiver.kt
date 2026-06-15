@@ -78,6 +78,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 showNotification(context, pref, "streak", "Api Hampir Padam! 🕯️", "Jangan biarkan kerja kerasmu hilang. Ayo login dan lakukan ritual penyulutan sekarang!", NotificationHelper.ID_REMINDER)
             }
             
+            // Cek streak terlewat — single toggle
             if (pref.isStreakMissNotifEnabled) {
                 checkMissedStreak(context, db, pref)
             }
@@ -92,9 +93,12 @@ class NotificationReceiver : BroadcastReceiver() {
         val diff = (today - streakData.lastDayId).toInt()
 
         when {
-            diff == 2 && pref.isStreakMiss1Enabled -> showNotification(context, pref, "streak_miss", "Masih Ada Peluang! 🔥", "Kamu kelewat 1 hari nih, tapi tenang! Masih ada peluang api menyala jika kamu memiliki protection. Yuk login! 🛡️", NotificationHelper.ID_STREAK_MISS)
-            diff == 6 && pref.isStreakMiss5Enabled -> showNotification(context, pref, "streak_miss", "Sudah Lumayan Lama... ⏳", "Sudah 5 hari kamu gak mampir. Ayo kita ulangin lagi rutinitas baikmu, jangan sampai benar-benar padam! 🕯️", NotificationHelper.ID_STREAK_MISS)
-            diff >= 8 && (diff - 1) % 7 == 0 && pref.isStreakMiss7Enabled -> showNotification(context, pref, "streak_miss", "Rindu Kehangatan Apimu ❄️", "Sudah seminggu lebih terlewatkan... HUMA merindukanmu. Mari nyalakan kembali semangatmu hari ini! ✨", NotificationHelper.ID_STREAK_MISS)
+            // Lewat 1 hari
+            diff == 2 -> if (pref.isStreakMiss1Enabled) showNotification(context, pref, "streak_miss", "Masih Ada Peluang! 🔥", "Kamu kelewat 1 hari nih, tapi tenang! Masih ada peluang api menyala jika kamu memiliki protection. Yuk login! 🛡️", NotificationHelper.ID_STREAK_MISS)
+            // Lewat 5 hari
+            diff == 6 -> if (pref.isStreakMiss5Enabled) showNotification(context, pref, "streak_miss", "Sudah Lumayan Lama... ⏳", "Sudah 5 hari kamu gak mampir. Ayo kita ulangin lagi rutinitas baikmu, jangan sampai benar-benar padam! 🕯️", NotificationHelper.ID_STREAK_MISS)
+            // Lewat 7 hari dan setiap kelipatan 7 hari berikutnya
+            diff >= 8 && (diff - 1) % 7 == 0 -> if (pref.isStreakMiss7Enabled) showNotification(context, pref, "streak_miss", "Rindu Kehangatan Apimu ❄️", "Sudah seminggu lebih terlewatkan... HUMA merindukanmu. Mari nyalakan kembali semangatmu hari ini! ✨", NotificationHelper.ID_STREAK_MISS)
         }
     }
 
@@ -152,11 +156,15 @@ class NotificationReceiver : BroadcastReceiver() {
             .setOngoing(true) 
             .setAutoCancel(false)
 
-        // Setting Suara & Getar
+        // Setting Suara & Getar — respek preference
         var defaults = 0
         if (pref.isNotifSoundEnabled) defaults = defaults or NotificationCompat.DEFAULT_SOUND
         if (pref.isNotifVibrateEnabled) defaults = defaults or NotificationCompat.DEFAULT_VIBRATE
-        builder.setDefaults(defaults)
+        if (defaults == 0) {
+            builder.setSilent(true)
+        } else {
+            builder.setDefaults(defaults)
+        }
 
         try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())

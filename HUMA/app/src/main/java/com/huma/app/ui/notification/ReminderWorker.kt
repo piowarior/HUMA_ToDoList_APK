@@ -5,11 +5,19 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.huma.app.data.local.AppDatabase
+import com.huma.app.data.local.PreferenceManager
 import kotlinx.coroutines.flow.firstOrNull
 import java.util.Calendar
 
 class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        val pref = PreferenceManager(applicationContext)
+
+        // Cek master + streak daily toggle
+        if (!pref.isNotifEnabled || !pref.isStreakNotifEnabled) {
+            return Result.success()
+        }
+
         val db = AppDatabase.getInstance(applicationContext)
         val streak = db.streakDao().getStreak().firstOrNull()
 

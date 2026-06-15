@@ -12,6 +12,7 @@ class PreferenceManager(context: Context) {
         const val NOTIF_SOUND = "notif_sound"
         const val NOTIF_VIBRATE = "notif_vibrate"
         const val NOTIF_STREAK = "notif_streak"
+        const val NOTIF_STREAK_MISS = "notif_streak_miss" // Single toggle for all streak miss (1, 5, 7+ days)
         const val NOTIF_STREAK_MISS_1 = "notif_streak_miss_1"
         const val NOTIF_STREAK_MISS_5 = "notif_streak_miss_5"
         const val NOTIF_STREAK_MISS_7 = "notif_streak_miss_7"
@@ -39,6 +40,11 @@ class PreferenceManager(context: Context) {
         get() = prefs.getBoolean(NOTIF_STREAK, true)
         set(value) = prefs.edit().putBoolean(NOTIF_STREAK, value).apply()
 
+    /** Single toggle controlling all streak miss notifications (1-day, 5-day, 7+ day) */
+    var isStreakMissNotifEnabled: Boolean
+        get() = prefs.getBoolean(NOTIF_STREAK_MISS, true)
+        set(value) = prefs.edit().putBoolean(NOTIF_STREAK_MISS, value).apply()
+
     var isStreakMiss1Enabled: Boolean
         get() = prefs.getBoolean(NOTIF_STREAK_MISS_1, true)
         set(value) = prefs.edit().putBoolean(NOTIF_STREAK_MISS_1, value).apply()
@@ -50,9 +56,6 @@ class PreferenceManager(context: Context) {
     var isStreakMiss7Enabled: Boolean
         get() = prefs.getBoolean(NOTIF_STREAK_MISS_7, true)
         set(value) = prefs.edit().putBoolean(NOTIF_STREAK_MISS_7, value).apply()
-
-    val isStreakMissNotifEnabled: Boolean
-        get() = isStreakMiss1Enabled || isStreakMiss5Enabled || isStreakMiss7Enabled
 
     var isGreetingNotifEnabled: Boolean
         get() = prefs.getBoolean(NOTIF_GREETING, true)

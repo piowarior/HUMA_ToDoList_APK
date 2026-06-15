@@ -36,8 +36,8 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun HUMATheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Dynamic color disabled by default so Settings theme choice is always respected
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.huma.app.data.local.PreferenceManager
 import java.util.Calendar
 import kotlin.random.Random
 
@@ -15,10 +16,26 @@ object NotificationScheduler {
 
     /**
      * Menjadwalkan semua notifikasi rutin (Greeting & Streak).
+     * Cek preference dulu sebelum jadwal.
      */
     fun scheduleAll(context: Context) {
-        scheduleDailyGreeting(context, forceNextDay = false)
-        scheduleDailyStreakReminder(context, forceNextDay = false)
+        val pref = PreferenceManager(context)
+        if (!pref.isNotifEnabled) {
+            // Master off → cancel semua
+            cancelGreeting(context)
+            cancelStreakReminder(context)
+            return
+        }
+        if (pref.isGreetingNotifEnabled) {
+            scheduleDailyGreeting(context, forceNextDay = false)
+        } else {
+            cancelGreeting(context)
+        }
+        if (pref.isStreakNotifEnabled) {
+            scheduleDailyStreakReminder(context, forceNextDay = false)
+        } else {
+            cancelStreakReminder(context)
+        }
     }
 
     /**
@@ -116,8 +133,44 @@ object NotificationScheduler {
         setExactAlarm(alarmManager, calendar.timeInMillis, pendingIntent)
     }
 
+    /**
+     * Cancel greeting alarm.
+     */
+    fun cancelGreeting(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra("type", "greeting")
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, REQ_GREETING, intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        pendingIntent?.let { alarmManager.cancel(it); it.cancel() }
+    }
+
+    /**
+     * Cancel streak daily reminder alarm.
+     */
+    fun cancelStreakReminder(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra("type", "streak_daily")
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, REQ_STREAK_DAILY, intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+        pendingIntent?.let { alarmManager.cancel(it); it.cancel() }
+    }
+
     private fun setExactAlarm(alarmManager: AlarmManager, timeInMillis: Long, pendingIntent: PendingIntent) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
         } else {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, timeInMillis, pendingIntent)
